@@ -1,9 +1,15 @@
 cmake_minimum_required(VERSION 3.2.0)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake;${CMAKE_MODULE_PATH}")
+set(CMAKE_SYSTEM_NAME Generic)
+set(CMAKE_SYSTEM_VERSION "0.0.0")
+set(CMAKE_CROSSCOMPILING "TRUE")
+set(CMAKE_SYSTEM_PROCESSOR "armv7e-m")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "--specs=nosys.specs")
 project(kvs-embedded-c)
 
 # Options
 option(BOARD_INGENIC_T31                "Build board Ingenic T31"                           OFF)
+option(BOARD_NRF5340                    "Build board nRF5340"                               ON)
 option(BOARD_RPI                        "Build board Raspberry Pi"                          OFF)
 option(USE_POOL_ALLOCATOR_LIB           "Use pool allocator on KVS lib only"                OFF)
 option(USE_POOL_ALLOCATOR_ALL           "Apply pool allocator on KVS lib and executable"    OFF)
@@ -33,6 +39,7 @@ check_include_files(signal.h HAVE_SIGNAL_H)
 
 # Print option values
 message(STATUS "BOARD_INGENIC_T31               = ${BOARD_INGENIC_T31}")
+message(STATUS "BOARD_NRF5340                   = ${BOARD_NRF5340}")
 message(STATUS "USE_POOL_ALLOCATOR_LIB          = ${USE_POOL_ALLOCATOR_LIB}")
 message(STATUS "USE_POOL_ALLOCATOR_ALL          = ${USE_POOL_ALLOCATOR_ALL}")
 message(STATUS "USE_LLHTTP                      = ${USE_LLHTTP}")
@@ -70,6 +77,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --std=c99")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --std=c++11")
 
+
+message("CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
+# set(CMAKE_C_COMPILER "/opt/zephyr-sdk-0.16.5/arm-zephyr-eabi/bin/arm-zephyr-eabi-gcc")
+
 # Compile flags for Ingenic T31
 if(${BOARD_INGENIC_T31})
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -Wall -march=mips32r2 -muclibc")
@@ -79,6 +90,13 @@ if(${BOARD_INGENIC_T31})
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -muclibc")
 endif()
 
+# Compile flags for Nordic NRF5340
+if(${BOARD_NRF5340})
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -Wall -march=armv7e-m")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-missing-braces -Wno-strict-aliasing -Wno-unused-variable -Wno-unused-but-set-variable -Wno-int-to-pointer-cast -Wno-pointer-to-int-cast -Wno-unused-function")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -march=armv7-e")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-braces -Wno-strict-aliasing -Wno-unused-variable -Wno-unused-but-set-variable -Wno-int-to-pointer-cast -Wno-maybe-uninitialized -Wno-unused-function")
+endif()
 if(${USE_POOL_ALLOCATOR_LIB})
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--wrap,kvsMalloc -Wl,--wrap,kvsRealloc -Wl,--wrap,kvsCalloc -Wl,--wrap,kvsFree")
 endif()
@@ -106,7 +124,7 @@ add_subdirectory(src)
 add_subdirectory(app)
 
 # Add samples
-add_subdirectory(samples)
+# add_subdirectory(samples)
 
 # Add test
 if(${BUILD_TEST})
