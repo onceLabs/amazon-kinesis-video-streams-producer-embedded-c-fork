@@ -5,7 +5,7 @@ set(CMAKE_SYSTEM_VERSION "0.0.0")
 set(CMAKE_CROSSCOMPILING "TRUE")
 set(CMAKE_SYSTEM_PROCESSOR "armv7e-m")
 set(CMAKE_EXE_LINKER_FLAGS_INIT "--specs=nosys.specs")
-
+# export CC=/opt/zephyr-sdk-0.16.5/arm-zephyr-eabi/bin/arm-zephyr-eabi-gcc
 project(kvs-embedded-c)
 
 # Options
