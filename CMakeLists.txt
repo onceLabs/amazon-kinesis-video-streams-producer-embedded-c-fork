@@ -5,6 +5,7 @@ set(CMAKE_SYSTEM_VERSION "0.0.0")
 set(CMAKE_CROSSCOMPILING "TRUE")
 set(CMAKE_SYSTEM_PROCESSOR "armv7e-m")
 set(CMAKE_EXE_LINKER_FLAGS_INIT "--specs=nosys.specs")
+
 project(kvs-embedded-c)
 
 # Options
@@ -96,6 +97,8 @@ if(${BOARD_NRF5340})
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-missing-braces -Wno-strict-aliasing -Wno-unused-variable -Wno-unused-but-set-variable -Wno-int-to-pointer-cast -Wno-pointer-to-int-cast -Wno-unused-function")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -march=armv7-e")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-braces -Wno-strict-aliasing -Wno-unused-variable -Wno-unused-but-set-variable -Wno-int-to-pointer-cast -Wno-maybe-uninitialized -Wno-unused-function")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMBEDTLS_CONFIG_FILE='</opt/nordic/ncs/v2.6.0/zephyr/modules/mbedtls/configs/config-tls-generic.h>'")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMBEDTLS_CONFIG_FILE='</opt/nordic/ncs/v2.6.0/zephyr/modules/mbedtls/configs/config-tls-generic.h>'")
 endif()
 if(${USE_POOL_ALLOCATOR_LIB})
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--wrap,kvsMalloc -Wl,--wrap,kvsRealloc -Wl,--wrap,kvsCalloc -Wl,--wrap,kvsFree")
