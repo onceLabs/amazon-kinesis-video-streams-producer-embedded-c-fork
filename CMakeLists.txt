@@ -121,10 +121,10 @@ if(${BUILD_TEST})
 endif()
 
 # Add sources
-add_subdirectory(src)
+# add_subdirectory(src)
 
 # Add application
-add_subdirectory(app)
+# add_subdirectory(app)
 
 # Add samples
 # add_subdirectory(samples)

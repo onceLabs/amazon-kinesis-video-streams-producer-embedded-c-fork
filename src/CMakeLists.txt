@@ -12,6 +12,10 @@ set(CMAKE_CXX_FLAGS "--std=c++11 ${CMAKE_CXX_FLAGS}")
 set(CMAKE_C_FLAGS "-D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200112L ${CMAKE_C_FLAGS}")
 
 set(LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(ZEPHYR_DIR /opt/nordic/ncs/v2.6.0/zephyr)
+
+add_definitions(-DCONFIG_ARM)
+add_definitions(-DCONFIG_MP_MAX_NUM_CPUS=1)
 
 set(LIB_SRC
     ${LIB_DIR}/include/kvs/kvsapp.h
@@ -49,6 +53,9 @@ set(LIB_SRC
 
 set(LIB_PUB_INC
     ${LIB_DIR}/include
+    ${ZEPHYR_DIR}/include/zephyr/net
+    ${ZEPHYR_DIR}/include
+    ${ZEPHYR_DIR}/subsys/testsuite/ztest/include/zephyr
 )
 
 set(LIB_PRV_INC
@@ -87,6 +94,8 @@ if(UNIX)
         ${LIB_DIR}/port/port_linux.c
     )
 endif()
+
+message(STATUS "LIB_SRC: ${LIB_PUB_INC}")
 
 # setup static library
 add_library(${LIB_NAME} STATIC ${LIB_SRC})

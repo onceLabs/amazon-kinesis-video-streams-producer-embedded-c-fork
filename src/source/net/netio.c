@@ -18,7 +18,7 @@
 #include <string.h>
 
 #include <sys/time.h>
-#include <sys/socket.h>
+#include <socket.h>
 
 /* Third party headers */
 #include "azure_c_shared_utility/xlogging.h"
