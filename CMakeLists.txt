@@ -18,6 +18,8 @@ option(SAMPLE_OPTIONS_FROM_ENV_VAR      "Sample reads options from environment v
 option(BUILD_WEBRTC_SAMPLES             "Build a sample that kvs and web rtc share buffers" OFF)
 option(BUILD_TEST                       "Build the testing tree."                           OFF)
 
+option(USE_ZEPHYR_MBEDTLS_LIB           "Use Zephyr mbedtls library"                        ON)
+
 set(USE_WEBRTC_MBEDTLS_LIB      OFF)
 
 # Verify and resolve options
@@ -107,7 +109,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
 # Add thirdparty libraries
-if(NOT ${USE_WEBRTC_MBEDTLS_LIB})
+if(NOT ${USE_WEBRTC_MBEDTLS_LIB} AND NOT ${USE_ZEPHYR_MBEDTLS_LIB})
     include(libmbedtls)
 endif()
 include(libllhttp)
