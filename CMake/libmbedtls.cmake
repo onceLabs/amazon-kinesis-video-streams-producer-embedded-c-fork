@@ -1,4 +1,4 @@
-set(MBEDTLS_DIR /opt/nordic/ncs/v2.6.0/modules/crypto/mbedtls)
+set(MBEDTLS_DIR /opt/nordic/ncs/v2.6.1/modules/crypto/mbedtls)
 
 # set(MBEDTLS_CONFIG_FILE /opt/nordic/ncs/v2.6.0/modules/crypto/mbedtls/configs/tfm_mbedcrypto_config_profile_medium.h)
 message(STATUS "MBEDTLS_NO_PLATFORM_ENTROPY = ${MBEDTLS_CONFIG_FILE}")
