@@ -5,6 +5,7 @@ set(CMAKE_SYSTEM_VERSION "0.0.0")
 set(CMAKE_CROSSCOMPILING "TRUE")
 set(CMAKE_SYSTEM_PROCESSOR "armv7e-m")
 set(CMAKE_EXE_LINKER_FLAGS_INIT "--specs=nosys.specs")
+# set(CMAKE_GENERATOR_PLATFORM "arm64")
 project(kvs-embedded-c)
 
 # Options
