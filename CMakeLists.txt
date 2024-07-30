@@ -58,8 +58,8 @@ if(${BUILD_WEBRTC_SAMPLES})
         ${CMAKE_CURRENT_LIST_DIR}/libraries/amazon/amazon-kinesis-video-streams-webrtc-sdk-c/webrtc/src/include
         ${CMAKE_CURRENT_LIST_DIR}/libraries/amazon/amazon-kinesis-video-streams-webrtc-sdk-c/webrtc/src/source
     )
-    set(CMAKE_C_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR}/libraries/amazon/amazon-kinesis-video-streams-webrtc-sdk-c/webrtc/configs -DMBEDTLS_USER_CONFIG_FILE='<config_mbedtls.h>' ${CMAKE_C_FLAGS}")
-    set(CMAKE_CXX_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR}/libraries/amazon/amazon-kinesis-video-streams-webrtc-sdk-c/webrtc/configs -DMBEDTLS_USER_CONFIG_FILE='<config_mbedtls.h>' ${CMAKE_CXX_FLAGS}")
+    set(CMAKE_C_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR}/libraries/amazon/amazon-kinesis-video-streams-webrtc-sdk-c/webrtc/configs -DMBEDTLS_USER_CONFIG_FILE='<config_mbedtls.h>' ${CMAKE_C_FLAGS}") #
+    set(CMAKE_CXX_FLAGS "-I${CMAKE_CURRENT_SOURCE_DIR}/libraries/amazon/amazon-kinesis-video-streams-webrtc-sdk-c/webrtc/configs -DMBEDTLS_USER_CONFIG_FILE='<config_mbedtls.h>' ${CMAKE_CXX_FLAGS}") # 
 
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-implicit-function-declaration -Wno-error=format -Wno-int-to-pointer-cast -Wno-pointer-to-int-cast -fgnu89-inline")
     set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wno-implicit-function-declaration -Wno-error=format -Wno-int-to-pointer-cast -Wno-pointer-to-int-cast -fgnu89-inline")
@@ -99,8 +99,8 @@ if(${BOARD_NRF5340})
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-missing-braces -Wno-strict-aliasing -Wno-unused-variable -Wno-unused-but-set-variable -Wno-int-to-pointer-cast -Wno-pointer-to-int-cast -Wno-unused-function")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -march=armv7-e")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-braces -Wno-strict-aliasing -Wno-unused-variable -Wno-unused-but-set-variable -Wno-int-to-pointer-cast -Wno-maybe-uninitialized -Wno-unused-function")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMBEDTLS_CONFIG_FILE='</opt/nordic/ncs/v2.6.1/zephyr/modules/mbedtls/configs/config-tls-generic.h>'")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMBEDTLS_CONFIG_FILE='</opt/nordic/ncs/v2.6.1/zephyr/modules/mbedtls/configs/config-tls-generic.h>'")
+    # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMBEDTLS_CONFIG_FILE='</opt/nordic/ncs/v2.6.1/zephyr/modules/mbedtls/configs/config-tls-generic.h>'")
+    # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMBEDTLS_CONFIG_FILE='</opt/nordic/ncs/v2.6.1/zephyr/modules/mbedtls/configs/config-tls-generic.h>'")
 endif()
 if(${USE_POOL_ALLOCATOR_LIB})
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--wrap,kvsMalloc -Wl,--wrap,kvsRealloc -Wl,--wrap,kvsCalloc -Wl,--wrap,kvsFree")
