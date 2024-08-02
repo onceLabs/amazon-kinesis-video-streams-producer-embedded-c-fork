@@ -1,4 +1,7 @@
 build
+.*
+!.gitignore
+!.gitmodules
 
 samples/kvs-esp32/sdkconfig.old
 samples/kvs-esp32/components/llhttp/*
