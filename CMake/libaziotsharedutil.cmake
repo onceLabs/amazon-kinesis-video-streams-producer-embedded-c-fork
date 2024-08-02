@@ -27,7 +27,6 @@ if(${USE_WEBRTC_MBEDTLS_LIB})
 endif()
 target_link_libraries(aziotsharedutil PUBLIC
     mbedtls mbedcrypto mbedx509
-    m
 )
 
 include(GNUInstallDirs)

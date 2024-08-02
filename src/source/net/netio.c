@@ -24,7 +24,7 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/entropy.h"
-#include "mbedtls/net.h"
+// #include "mbedtls/net.h" No longer needed - remove https://github.com/Mbed-TLS/mbedtls/blob/development/docs/3.0-migration-guide.md
 #include "mbedtls/net_sockets.h"
 
 /* Public headers */

@@ -33,6 +33,8 @@
 #include "com/amazonaws/kinesis/video/capturer/AudioCapturer.h"
 #include "com/amazonaws/kinesis/video/capturer/VideoCapturer.h"
 
+#include "kvsappcli.h"
+
 #define ERRNO_NONE 0
 #define ERRNO_FAIL __LINE__
 
@@ -305,7 +307,8 @@ static int setKvsAppOptions(KvsAppHandle kvsAppHandle)
     return res;
 }
 
-int main(int argc, char *argv[])
+int kvsappcli_main(int argc, char *argv[])
+// int kvsappcli_main()
 {
     int res = 0;
     KvsAppHandle kvsAppHandle;
