@@ -24,7 +24,7 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/entropy.h"
-// #include "mbedtls/net.h" No longer needed - remove https://github.com/Mbed-TLS/mbedtls/blob/development/docs/3.0-migration-guide.md
+// #include "mbedtls/net.h" 8/2/24 No longer needed - remove https://github.com/Mbed-TLS/mbedtls/blob/development/docs/3.0-migration-guide.md
 #include "mbedtls/net_sockets.h"
 
 /* Public headers */
@@ -33,6 +33,24 @@
 /* Internal headers */
 #include "os/allocator.h"
 #include "net/netio.h"
+
+#include <zephyr/posix/sys/select.h>
+#include <zephyr/posix/sys/socket.h>
+
+// Taken from libraries/3rdparty/c-utility/tests/socket_async_ut/win32_fake_linux/socket_async_os.h
+// Might need a better solution at some point - put here on 8/5/24
+
+#define FD_SET(n, p) *(p) = 1
+#define FD_CLR(n, p) *(p) = 0
+#define FD_ISSET(n, p) (*(p) == 1)
+#define FD_ZERO(p) *(p) = 0
+
+    typedef size_t socklen_t;
+    typedef int ssize_t;
+
+    typedef int fd_set;
+
+// Done taken from libraries/3rdparty/c-utility/tests/socket_async_ut/win32_fake_linux/socket_async_os.h
 
 #define DEFAULT_CONNECTION_TIMEOUT_MS       (10 * 1000)
 
@@ -406,7 +424,7 @@ int NetIo_setSendTimeout(NetIoHandle xNetIoHandle, unsigned int uSendTimeoutMs)
         {
             /* Do nothing when connection hasn't established. */
         }
-        else if (setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (void *)&tv, sizeof(tv)) != 0)
+        else if (getsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (void *)&tv, sizeof(tv)) != 0)
         {
             res = KVS_ERROR_NETIO_UNABLE_TO_SET_SEND_TIMEOUT;
         }
