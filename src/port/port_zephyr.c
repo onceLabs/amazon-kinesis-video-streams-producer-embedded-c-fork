@@ -75,10 +75,11 @@ uint64_t getEpochTimestampInMs(void)
 
 uint8_t getRandomNumber(void)
 {
-    return sys_rand8_get();
+    return (uint8_t)sys_rand32_get();
 }
 
 void sleepInMs(uint32_t ms)
 {
-    usleep(ms * 1000);
+    // usleep(ms * 1000);
+    k_sleep(K_MSEC(ms));
 }

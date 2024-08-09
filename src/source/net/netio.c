@@ -40,15 +40,8 @@
 // Taken from libraries/3rdparty/c-utility/tests/socket_async_ut/win32_fake_linux/socket_async_os.h
 // Might need a better solution at some point - put here on 8/5/24
 
-#define FD_SET(n, p) *(p) = 1
-#define FD_CLR(n, p) *(p) = 0
-#define FD_ISSET(n, p) (*(p) == 1)
-#define FD_ZERO(p) *(p) = 0
-
     typedef size_t socklen_t;
     typedef int ssize_t;
-
-    typedef int fd_set;
 
 // Done taken from libraries/3rdparty/c-utility/tests/socket_async_ut/win32_fake_linux/socket_async_os.h
 
@@ -126,7 +119,7 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
             {
                 if ((retVal = mbedtls_x509_crt_parse(pxNet->pRootCA, (void *)pcRootCA, strlen(pcRootCA) + 1)) != 0 ||
                     (retVal = mbedtls_x509_crt_parse(pxNet->pCert, (void *)pcCert, strlen(pcCert) + 1)) != 0 ||
-                    (retVal = mbedtls_pk_parse_key(pxNet->pPrivKey, (void *)pcPrivKey, strlen(pcPrivKey) + 1, NULL, 0)) != 0)
+                    (retVal = mbedtls_pk_parse_key(pxNet->pPrivKey, (void *)pcPrivKey, strlen(pcPrivKey) + 1, NULL, 0, mbedtls_ctr_drbg_random, &pxNet->xCtrDrbg)) != 0)
                 {
                     res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
                     LogError("Failed to parse x509 (err:-%X)", -res);
@@ -419,12 +412,13 @@ int NetIo_setSendTimeout(NetIoHandle xNetIoHandle, unsigned int uSendTimeoutMs)
         fd = pxNet->xFd.fd;
         tv.tv_sec = uSendTimeoutMs / 1000;
         tv.tv_usec = (uSendTimeoutMs % 1000) * 1000;
+        socklen_t tv_size = sizeof(tv);
 
         if (fd < 0)
         {
             /* Do nothing when connection hasn't established. */
         }
-        else if (getsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (void *)&tv, sizeof(tv)) != 0)
+        else if (getsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (void *)&tv, &tv_size) != 0)
         {
             res = KVS_ERROR_NETIO_UNABLE_TO_SET_SEND_TIMEOUT;
         }

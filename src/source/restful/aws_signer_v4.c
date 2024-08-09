@@ -20,6 +20,7 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "mbedtls/md.h"
 #include "mbedtls/sha256.h"
+#include "mbedtls/compat-2.x.h"
 
 /* Public headers */
 #include "kvs/errors.h"
