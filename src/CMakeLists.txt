@@ -83,7 +83,7 @@ else()
     )
 endif()
 
-if(NOT ${USE_WEBRTC_MBEDTLS_LIB})
+if(NOT ${USE_WEBRTC_MBEDTLS_LIB} OR NOT ${USE_ZEPHYR_MBEDTLS_LIB})
     set(LINK_LIBS ${LINK_LIBS}
         mbedtls
         mbedcrypto
