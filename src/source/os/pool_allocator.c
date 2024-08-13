@@ -13,7 +13,10 @@
  * permissions and limitations under the License.
  */
 
-#include <pthread.h>
+#include <zephyr/kernel.h>
+#include <zephyr/posix/pthread.h>
+
+// #include <pthread.h>
 #include <string.h>
 
 /* Third party headers */

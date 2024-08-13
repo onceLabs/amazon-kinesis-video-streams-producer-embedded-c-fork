@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.2.0)
 
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+
 set(LIB_NAME "kvs-embedded-c")
 
 # compiled as C99
@@ -58,6 +60,8 @@ set(LIB_PUB_INC
     ${ZEPHYR_DIR}/include/zephyr/net
     ${ZEPHYR_DIR}/include
     ${ZEPHYR_DIR}/subsys/testsuite/ztest/include/zephyr
+
+    # ${CMAKE_BINARY_DIR}/zephyr/include/generated
 )
 
 set(LIB_PRV_INC
@@ -71,6 +75,7 @@ set(LINK_LIBS
 )
 
 if(${USE_LLHTTP})
+    message(STATUS "GUPHY Using llhttp")
     set(LIB_SRC ${LIB_SRC}
         ${LIB_DIR}/source/net/http_parser_adapter_llhttp.c
     )
@@ -78,6 +83,7 @@ if(${USE_LLHTTP})
         llhttp
     )
 else()
+    message(STATUS "GUPHY Using default http parser")
     set(LIB_SRC ${LIB_SRC}
         ${LIB_DIR}/source/net/http_parser_adapter_default.c
     )
@@ -99,6 +105,9 @@ endif()
 
 message(STATUS "LIB_SRC: ${LIB_PUB_INC}")
 
+
+
+zephyr_include_directories(${LIB_PUB_INC})
 # setup static library
 add_library(${LIB_NAME} STATIC ${LIB_SRC})
 set_target_properties(${LIB_NAME} PROPERTIES POSITION_INDEPENDENT_CODE 1)
@@ -111,6 +120,7 @@ endif()
 
 target_link_libraries(${LIB_NAME} PUBLIC
     ${LINK_LIBS}
+    zephyr_interface
 )
 
 include(GNUInstallDirs)
