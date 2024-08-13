@@ -17,8 +17,13 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <zephyr/kernel.h>
+#include <zephyr/posix/sys/select.h>
+#include <zephyr/posix/sys/socket.h>
+#include <zephyr/posix/pthread.h>
+
 #include <sys/time.h>
-#include <socket.h>
+// #include <socket.h>
 
 /* Third party headers */
 #include "azure_c_shared_utility/xlogging.h"
@@ -34,8 +39,6 @@
 #include "os/allocator.h"
 #include "net/netio.h"
 
-#include <zephyr/posix/sys/select.h>
-#include <zephyr/posix/sys/socket.h>
 
 // Taken from libraries/3rdparty/c-utility/tests/socket_async_ut/win32_fake_linux/socket_async_os.h
 // Might need a better solution at some point - put here on 8/5/24
