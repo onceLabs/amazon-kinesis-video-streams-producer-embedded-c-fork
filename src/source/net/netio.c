@@ -21,14 +21,16 @@
 #include <zephyr/posix/sys/select.h>
 #include <zephyr/posix/sys/socket.h>
 #include <zephyr/posix/pthread.h>
+#include <zephyr/posix/sys/time.h>
 
-#include <sys/time.h>
+// #include <sys/time.h>
 // #include <socket.h>
 
 /* Third party headers */
 #include "azure_c_shared_utility/xlogging.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/entropy.h"
+#include <mbedtls/entropy.h>
 // #include "mbedtls/net.h" 8/2/24 No longer needed - remove https://github.com/Mbed-TLS/mbedtls/blob/development/docs/3.0-migration-guide.md
 #include "mbedtls/net_sockets.h"
 

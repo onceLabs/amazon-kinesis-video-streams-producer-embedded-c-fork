@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.2.0)
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+# find_package(MbedTLS REQUIRED)
+# find_package(mbedtls REQUIRED)
 
 set(LIB_NAME "kvs-embedded-c")
 
@@ -16,12 +18,30 @@ set(CMAKE_C_FLAGS "-D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200112L ${CMAKE_C_FLAGS
 set(LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(ZEPHYR_DIR $ENV{ZEPHYR_BASE})
 
-zephyr_library_link_libraries(MbedTLS)
 
 add_definitions(-DCONFIG_ARM)
 add_definitions(-DCONFIG_MP_MAX_NUM_CPUS=1)
 
-set(LIB_SRC
+# zephyr_library_import(mbedtls modules/nrf/subsys/nrf_security/src/libmbedtls.a)
+# zephyr_library_link_libraries(mbedtls)
+
+
+if(${USE_LLHTTP})
+    message(STATUS "GUPHY Using llhttp")
+    set(LIB_SRC ${LIB_SRC}
+        ${LIB_DIR}/source/net/http_parser_adapter_llhttp.c
+    )
+    set(LINK_LIBS ${LINK_LIBS}
+        llhttp
+    )
+else()
+    message(STATUS "GUPHY Using default http parser")
+    set(LIB_SRC ${LIB_SRC}
+        ${LIB_DIR}/source/net/http_parser_adapter_default.c
+    )
+endif()
+
+set(LIB_SRC ${LIB_SRC}
     ${LIB_DIR}/include/kvs/kvsapp.h
     ${LIB_DIR}/include/kvs/kvsapp_options.h
     ${LIB_DIR}/include/kvs/errors.h
@@ -39,9 +59,9 @@ set(LIB_SRC
     ${LIB_DIR}/source/misc/json_helper.c
     ${LIB_DIR}/source/misc/json_helper.h
     ${LIB_DIR}/source/mkv/mkv_generator.c
+    ${LIB_DIR}/source/net/http_parser_adapter.h
     ${LIB_DIR}/source/net/http_helper.c
     ${LIB_DIR}/source/net/http_helper.h
-    ${LIB_DIR}/source/net/http_parser_adapter.h
     ${LIB_DIR}/source/net/netio.c
     ${LIB_DIR}/source/net/netio.h
     ${LIB_DIR}/source/os/allocator.c
@@ -53,45 +73,30 @@ set(LIB_SRC
     ${LIB_DIR}/source/restful/iot/iot_credential_provider.c
     ${LIB_DIR}/source/restful/kvs/restapi_kvs.c
     ${LIB_DIR}/source/stream/stream.c
+    ${LIB_DIR}/source/net/http_parser_adapter_llhttp.c
+
 )
 
 set(LIB_PUB_INC
     ${LIB_DIR}/include
     ${ZEPHYR_DIR}/include/zephyr/net
     ${ZEPHYR_DIR}/include
-    ${ZEPHYR_DIR}/subsys/testsuite/ztest/include/zephyr
-
-    # ${CMAKE_BINARY_DIR}/zephyr/include/generated
 )
 
 set(LIB_PRV_INC
     ${LIB_DIR}/source
 )
 
-set(LINK_LIBS
+set(LINK_LIBS ${LINK_LIBS}
     parson
     aziotsharedutil
     tlsf
 )
 
-if(${USE_LLHTTP})
-    message(STATUS "GUPHY Using llhttp")
-    set(LIB_SRC ${LIB_SRC}
-        ${LIB_DIR}/source/net/http_parser_adapter_llhttp.c
-    )
-    set(LINK_LIBS ${LINK_LIBS}
-        llhttp
-    )
-else()
-    message(STATUS "GUPHY Using default http parser")
-    set(LIB_SRC ${LIB_SRC}
-        ${LIB_DIR}/source/net/http_parser_adapter_default.c
-    )
-endif()
 
 if(NOT ${USE_WEBRTC_MBEDTLS_LIB} OR NOT ${USE_ZEPHYR_MBEDTLS_LIB})
     set(LINK_LIBS ${LINK_LIBS}
-        mbedtls
+        MbedTLS
         mbedcrypto
         mbedx509
     )
@@ -103,14 +108,14 @@ if(UNIX)
     )
 endif()
 
-message(STATUS "LIB_SRC: ${LIB_PUB_INC}")
+message(STATUS "LIB_SRC: ${LIB_SRC}")
 
 
 
-zephyr_include_directories(${LIB_PUB_INC})
+# zephyr_include_directories(${LIB_PUB_INC} ${ZEPHYR_BASE}/modules/crypto/mbedtls/include)
 # setup static library
 add_library(${LIB_NAME} STATIC ${LIB_SRC})
-set_target_properties(${LIB_NAME} PROPERTIES POSITION_INDEPENDENT_CODE 1)
+# set_target_properties(${LIB_NAME} PROPERTIES POSITION_INDEPENDENT_CODE 1)
 target_include_directories(${LIB_NAME} PUBLIC ${LIB_PUB_INC})
 target_include_directories(${LIB_NAME} PRIVATE ${LIB_PRV_INC})
 if(${USE_WEBRTC_MBEDTLS_LIB})
@@ -119,9 +124,32 @@ if(${USE_WEBRTC_MBEDTLS_LIB})
 endif()
 
 target_link_libraries(${LIB_NAME} PUBLIC
-    ${LINK_LIBS}
     zephyr_interface
+    ${LINK_LIBS}
+    
 )
+# target_link_libraries(${LIB_NAME} PUBLIC
+#     zephyr
+    
+#     mbedtls
+#     mbedcrypto
+#     mbedx509
+# )
+# target_compile_definitions(${LIB_NAME} PUBLIC
+#     -DUSE_ZEPHYR
+# )
+# target_link_options(${LIB_NAME} PRIVATE
+#     -lmbedtls
+#     -lmbedcrypto
+#     -lmbedx509
+# )
+
+if(${USE_LLHTTP})
+    target_link_libraries(${LIB_NAME} PRIVATE
+        llhttp
+    )
+endif()
+
 
 include(GNUInstallDirs)
 

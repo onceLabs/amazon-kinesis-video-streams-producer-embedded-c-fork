@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.2.0)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake;${CMAKE_MODULE_PATH}")
-set(CMAKE_SYSTEM_NAME Generic)
-set(CMAKE_SYSTEM_VERSION "0.0.0")
-set(CMAKE_CROSSCOMPILING "TRUE")
-set(CMAKE_SYSTEM_PROCESSOR "armv7e-m")
-set(CMAKE_EXE_LINKER_FLAGS_INIT "--specs=nosys.specs")
+# set(CMAKE_SYSTEM_NAME Generic)
+# set(CMAKE_SYSTEM_VERSION "0.0.0")
+# set(CMAKE_CROSSCOMPILING "TRUE")
+# set(CMAKE_SYSTEM_PROCESSOR "armv8-m")
+# set(CMAKE_EXE_LINKER_FLAGS_INIT "--specs=nosys.specs")
 # set(CMAKE_GENERATOR_PLATFORM "arm64")
 project(kvs-embedded-c)
 
@@ -73,8 +73,8 @@ if(${BUILD_WEBRTC_SAMPLES})
 endif()
 
 # Make warning as error
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
 
 # compiled as C99
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --std=c99")
@@ -95,10 +95,10 @@ endif()
 
 # Compile flags for Nordic NRF5340
 if(${BOARD_NRF5340})
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -Wall -march=armv7e-m")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-missing-braces -Wno-strict-aliasing -Wno-unused-variable -Wno-unused-but-set-variable -Wno-int-to-pointer-cast -Wno-pointer-to-int-cast -Wno-unused-function")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -march=armv7-e")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-braces -Wno-strict-aliasing -Wno-unused-variable -Wno-unused-but-set-variable -Wno-int-to-pointer-cast -Wno-maybe-uninitialized -Wno-unused-function")
+    # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -Wall -march=armv8-m")
+    # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-missing-braces -Wno-strict-aliasing -Wno-unused-variable -Wno-unused-but-set-variable -Wno-int-to-pointer-cast -Wno-pointer-to-int-cast -Wno-unused-function")
+    # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -Wall -march=armv8-m")
+    # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-braces -Wno-strict-aliasing -Wno-unused-variable -Wno-unused-but-set-variable -Wno-int-to-pointer-cast -Wno-maybe-uninitialized -Wno-unused-function")
     # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DMBEDTLS_CONFIG_FILE='</opt/nordic/ncs/v2.6.1/zephyr/modules/mbedtls/configs/config-tls-generic.h>'")
     # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMBEDTLS_CONFIG_FILE='</opt/nordic/ncs/v2.6.1/zephyr/modules/mbedtls/configs/config-tls-generic.h>'")
 endif()
@@ -110,8 +110,8 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 
 # Add thirdparty libraries
-if(NOT ${USE_WEBRTC_MBEDTLS_LIB} AND NOT ${USE_ZEPHYR_MBEDTLS_LIB})
-    include(libmbedtls)
+if(NOT ${USE_WEBRTC_MBEDTLS_LIB}) # AND NOT ${USE_ZEPHYR_MBEDTLS_LIB})
+    # include(libmbedtls)
 endif()
 include(libllhttp)
 include(libparson)
