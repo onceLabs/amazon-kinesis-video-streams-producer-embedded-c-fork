@@ -21,6 +21,7 @@
 #include "mbedtls/md.h"
 #include "mbedtls/sha256.h"
 
+
 /* Public headers */
 #include "kvs/errors.h"
 
@@ -126,7 +127,7 @@ static int prvHexEncodedSha256(const unsigned char *pMsg, size_t uMsgLen, char p
     {
         res = KVS_ERROR_INVALID_ARGUMENT;
     }
-    else if ((retVal = mbedtls_sha256_ret(pMsg, uMsgLen, pHashBuf, 0)) != 0)
+    else if ((retVal = mbedtls_sha256(pMsg, uMsgLen, pHashBuf, 0)) != 0)
     {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
     }
