@@ -1,7 +1,7 @@
 set(AZURE_C_SHARED_UTILITY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libraries/3rdparty/c-utility)
 
 set(AZURE_C_SHARED_UTILITY_SRC
-    ${AZURE_C_SHARED_UTILITY_DIR}/adapters/lock_pthreads.c
+    # ${AZURE_C_SHARED_UTILITY_DIR}/adapters/lock_pthreads.c
     ${AZURE_C_SHARED_UTILITY_DIR}/src/buffer.c
     ${AZURE_C_SHARED_UTILITY_DIR}/src/consolelogger.c
     ${AZURE_C_SHARED_UTILITY_DIR}/src/crt_abstractions.c

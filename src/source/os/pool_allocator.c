@@ -13,9 +13,8 @@
  * permissions and limitations under the License.
  */
 
-#include <pthread.h>
+#include <zephyr/posix/pthread.h>
 #include <string.h>
-
 /* Third party headers */
 #include "tlsf.h"
 

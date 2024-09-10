@@ -12,8 +12,16 @@ set(CMAKE_CXX_FLAGS "--std=c++11 ${CMAKE_CXX_FLAGS}")
 set(CMAKE_C_FLAGS "-D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200112L ${CMAKE_C_FLAGS}")
 
 set(LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(ZEPHYR_DIR /opt/nordic/ncs/v2.7.0/zephyr)
+set(ZEPHYR_MODUELS_DIR /opt/nordic/ncs/v2.7.0/modules)
+
+add_definitions(-DCONFIG_ARM)
+add_definitions(-DCONFIG_MP_MAX_NUM_CPUS=1)
+
+
 
 set(LIB_SRC
+    ${GENERATED_HEADERS_DIR}/autoconf.h
     ${LIB_DIR}/include/kvs/kvsapp.h
     ${LIB_DIR}/include/kvs/kvsapp_options.h
     ${LIB_DIR}/include/kvs/errors.h
@@ -49,6 +57,11 @@ set(LIB_SRC
 
 set(LIB_PUB_INC
     ${LIB_DIR}/include
+    ${ZEPHYR_DIR}/include/zephyr/net
+    ${ZEPHYR_DIR}/include
+    ${ZEPHYR_DIR}/subsys/testsuite/ztest/include/zephyr
+    ${GENERATED_HEADERS_DIR}
+    ${GENERATED_HEADERS_DIR}/syscalls
 )
 
 set(LIB_PRV_INC
@@ -88,6 +101,8 @@ if(UNIX)
     )
 endif()
 
+message(STATUS "LIB_PUB_INC: ${LIB_PUB_INC}")
+message(STATUS "ZEPHYR_BASE: ${ZEPHYR_BASE}")
 # setup static library
 add_library(${LIB_NAME} STATIC ${LIB_SRC})
 set_target_properties(${LIB_NAME} PROPERTIES POSITION_INDEPENDENT_CODE 1)
@@ -100,6 +115,17 @@ endif()
 
 target_link_libraries(${LIB_NAME} PUBLIC
     ${LINK_LIBS}
+)
+
+# Zephyr specific
+target_link_libraries(${LIB_NAME} PUBLIC
+    zephyr_interface
+    zephyr_kernel
+    zephyr_libc
+    zephyr_minimal
+    zephyr_posix
+    zephyr_syscall
+    zephyr_types
 )
 
 include(GNUInstallDirs)
