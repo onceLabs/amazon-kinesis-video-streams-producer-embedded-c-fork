@@ -17,5 +17,5 @@
 	branch = release
 [submodule "libraries/amazon/amazon-kinesis-video-streams-media-interface"]
 	path = libraries/amazon/amazon-kinesis-video-streams-media-interface
-	url = https://github.com/aws-samples/amazon-kinesis-video-streams-media-interface.git
-	branch = main
+	url = https://github.com/onceLabs/amazon-kinesis-video-streams-media-interface.git
+	branch = patch/development
