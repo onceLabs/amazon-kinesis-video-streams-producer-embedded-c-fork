@@ -25,6 +25,8 @@
 #include "kvs/errors.h"
 #include "kvs/mkv_generator.h"
 #include "kvs/stream.h"
+// Include zephyr kernel header
+#include <zephyr/kernel.h>
 
 /* Internal headers */
 #include "os/allocator.h"
@@ -42,7 +44,8 @@ typedef struct DataFrame
 
 typedef struct Stream
 {
-    LOCK_HANDLE xLock;
+    //LOCK_HANDLE xLock;
+    struct k_mutex *xLockMutex;
 
     char *pMkvEbmlSeg;
     size_t uMkvEbmlSegLen;
@@ -68,7 +71,7 @@ static DataFrameHandle prvStreamPop(StreamHandle xStreamHandle, bool bPeek)
     }
     else
     {
-        if (Lock(pxStream->xLock) != LOCK_OK)
+        if (k_mutex_lock(pxStream->xLockMutex, K_FOREVER))
         {
             LogError("Failed to Lock");
         }
@@ -101,7 +104,7 @@ static DataFrameHandle prvStreamPop(StreamHandle xStreamHandle, bool bPeek)
                 }
             }
 
-            Unlock(pxStream->xLock);
+            k_mutex_unlock(pxStream->xLockMutex);
         }
     }
 
@@ -134,7 +137,7 @@ StreamHandle Kvs_streamCreate(VideoTrackInfo_t *pVideoTrackInfo, AudioTrackInfo_
             kvsFree(pxStream);
             pxStream = NULL;
         }
-        else if ((pxStream->xLock = Lock_Init()) == NULL)
+        else if (k_mutex_init(pxStream->xLockMutex))//((pxStream->xLock = Lock_Init()) == NULL)
         {
             LogError("Failed to initialize lock");
             kvsFree(pxStream);
@@ -159,7 +162,7 @@ void Kvs_streamTermintate(StreamHandle xStreamHandle)
     if (pxStream != NULL)
     {
         kvsFree(pxStream->pMkvEbmlSeg);
-        Lock_Deinit(pxStream->xLock);
+        //Lock_Deinit(pxStream->xLock);
         kvsFree(pxStream);
     }
 }
@@ -218,7 +221,7 @@ DataFrameHandle Kvs_streamAddDataFrame(StreamHandle xStreamHandle, DataFrameIn_t
         res = KVS_ERROR_OUT_OF_MEMORY;
         LogError("OOM: pxDataFrame");
     }
-    else if (Lock(pxStream->xLock) != LOCK_OK)
+    else if (k_mutex_lock(pxStream->xLockMutex, K_FOREVER))
     {
         res = KVS_ERROR_LOCK_ERROR;
         LogError("Failed to Lock");
@@ -306,7 +309,7 @@ DataFrameHandle Kvs_streamAddDataFrame(StreamHandle xStreamHandle, DataFrameIn_t
             }
         }
 
-        Unlock(pxStream->xLock);
+        k_mutex_unlock(pxStream->xLockMutex);
     }
 
     if (res != KVS_ERRNO_NONE)
@@ -338,7 +341,7 @@ bool Kvs_streamIsEmpty(StreamHandle xStreamHandle)
 
     if (pxStream != NULL)
     {
-        if (Lock(pxStream->xLock) != LOCK_OK)
+        if (k_mutex_lock(pxStream->xLockMutex, K_FOREVER))
         {
             LogError("Failed to Lock");
         }
@@ -348,7 +351,7 @@ bool Kvs_streamIsEmpty(StreamHandle xStreamHandle)
             {
                 bRes = false;
             }
-            Unlock(pxStream->xLock);
+            k_mutex_unlock(pxStream->xLockMutex);
         }
     }
 
@@ -365,7 +368,7 @@ bool Kvs_streamAvailOnTrack(StreamHandle xStreamHandle, TrackType_t xTrackType)
 
     if (pxStream != NULL)
     {
-        if (Lock(pxStream->xLock) != LOCK_OK)
+        if (k_mutex_lock(pxStream->xLockMutex, K_FOREVER))
         {
             LogError("Failed to Lock");
         }
@@ -385,7 +388,7 @@ bool Kvs_streamAvailOnTrack(StreamHandle xStreamHandle, TrackType_t xTrackType)
                 pxListItem = pxListItem->Flink;
             }
 
-            Unlock(pxStream->xLock);
+            k_mutex_unlock(pxStream->xLockMutex);
         }
     }
 
@@ -406,7 +409,7 @@ int Kvs_streamMemStatTotal(StreamHandle xStreamHandle, size_t *puMemTotal)
         res = KVS_ERROR_INVALID_ARGUMENT;
         LogError("Invalid argument");
     }
-    else if (Lock(pxStream->xLock) != LOCK_OK)
+    else if (k_mutex_lock(pxStream->xLockMutex, K_FOREVER))
     {
         res = KVS_ERROR_LOCK_ERROR;
         LogError("Failed to Lock");
@@ -426,7 +429,7 @@ int Kvs_streamMemStatTotal(StreamHandle xStreamHandle, size_t *puMemTotal)
         }
 
         *puMemTotal = uMemTotal;
-        Unlock(pxStream->xLock);
+        k_mutex_unlock(pxStream->xLockMutex);
     }
 
     return res;
