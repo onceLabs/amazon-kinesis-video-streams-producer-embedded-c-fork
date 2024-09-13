@@ -118,7 +118,8 @@ target_link_libraries(${LIB_NAME} PUBLIC
 )
 
 # Zephyr specific
-target_link_libraries(${LIB_NAME} PUBLIC
+# if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Zephyr")
+target_link_libraries(${LIB_NAME} PRIVATE
     zephyr_interface
     zephyr_kernel
     zephyr_libc
@@ -127,6 +128,7 @@ target_link_libraries(${LIB_NAME} PUBLIC
     zephyr_syscall
     zephyr_types
 )
+# endif()
 
 include(GNUInstallDirs)
 

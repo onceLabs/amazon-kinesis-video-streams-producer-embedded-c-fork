@@ -20,6 +20,7 @@ set(AZURE_C_SHARED_UTILITY_INC
 
 # setup static library
 add_library(aziotsharedutil STATIC ${AZURE_C_SHARED_UTILITY_SRC})
+target_compile_options(aziotsharedutil PUBLIC -mcpu=cortex-m33)
 target_include_directories(aziotsharedutil PUBLIC ${AZURE_C_SHARED_UTILITY_INC})
 if(${USE_WEBRTC_MBEDTLS_LIB})
     target_link_directories(aziotsharedutil PUBLIC ${WEBRTC_LIB_PATH})
