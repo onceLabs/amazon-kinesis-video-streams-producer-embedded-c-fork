@@ -45,6 +45,8 @@
 #define DEFAULT_PUT_MEDIA_SEND_TIMEOUT_MS (1 * 1000)
 #define DEFAULT_RING_BUFFER_MEM_LIMIT (1 * 1024 * 1024)
 
+struct k_mutex wrapper_mutex;
+
 typedef struct PolicyRingBufferParameter
 {
     size_t uMemLimit;
@@ -913,7 +915,7 @@ KvsAppHandle KvsApp_create(const char *pcHost, const char *pcRegion, const char 
     else
     {
         memset(pKvs, 0, sizeof(KvsApp_t));
-
+        pKvs->xLockMutex = &wrapper_mutex;
         if (k_mutex_init(pKvs->xLockMutex))//(pKvs->xLock = Lock_Init()) == NULL)
         {
             res = KVS_ERROR_LOCK_ERROR;

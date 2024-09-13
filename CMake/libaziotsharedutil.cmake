@@ -1,5 +1,6 @@
 set(AZURE_C_SHARED_UTILITY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libraries/3rdparty/c-utility)
 
+
 set(AZURE_C_SHARED_UTILITY_SRC
     # ${AZURE_C_SHARED_UTILITY_DIR}/adapters/lock_pthreads.c
     ${AZURE_C_SHARED_UTILITY_DIR}/src/buffer.c
@@ -26,6 +27,7 @@ if(${USE_WEBRTC_MBEDTLS_LIB})
     target_link_directories(aziotsharedutil PUBLIC ${WEBRTC_LIB_PATH})
     target_include_directories(aziotsharedutil PUBLIC ${WEBRTC_INC_PATH})
 endif()
+target_include_directories(aziotsharedutil PRIVATE ${ZEPHYR_BASE}/include)
 target_link_libraries(aziotsharedutil PUBLIC
     mbedtls mbedcrypto mbedx509
     m

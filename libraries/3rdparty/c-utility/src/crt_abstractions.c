@@ -241,7 +241,7 @@ int sprintf_s(char* dst, size_t dstSizeInBytes, const char* format, ...)
     if ((dst == NULL) ||
         (format == NULL))
     {
-        errno = EINVAL;
+        // errno = EINVAL;
         result = -1;
     }
     else
@@ -364,7 +364,7 @@ unsigned long long strtoull_s(const char* nptr, char** endptr, int base)
         digitVal = DIGIT_VAL(*runner);
         if (validStr && IN_BASE_RANGE(digitVal, base))
         {
-            errno = 0;
+            // errno = 0;
             do
             {
                 if (((ULLONG_MAX - digitVal) / base) < result)
@@ -372,7 +372,7 @@ unsigned long long strtoull_s(const char* nptr, char** endptr, int base)
                     /*Codes_SRS_CRT_ABSTRACTIONS_21_014: [If the correct value is outside the range, the strtoull_s returns the value ULLONG_MAX, and errno will receive the value ERANGE.]*/
                     /* overflow... */
                     result = ULLONG_MAX;
-                    errno = ERANGE;
+                    // errno = ERANGE;
                 }
                 else
                 {
@@ -523,7 +523,7 @@ static FLOAT_STRING_TYPE splitFloatString(const char* nptr, char** endptr, int *
         /* integers will go to the fraction and exponential. */
         ullInteger = strtoull_s(startptr, endptr, 10);
         integerSize = (int)((*endptr) - startptr);
-        if ((ullInteger == ULLONG_MAX) && (errno != 0))
+        if ((ullInteger == ULLONG_MAX) /*&& (errno != 0)*/)
         {
             result = FST_OVERFLOW;
         }
@@ -534,7 +534,7 @@ static FLOAT_STRING_TYPE splitFloatString(const char* nptr, char** endptr, int *
             startptr = (*endptr) + 1;
             ullFraction = strtoull_s(startptr, endptr, 10);
             fractionSize = (int)((*endptr) - startptr);
-            if ((ullFraction == ULLONG_MAX) && (errno != 0))
+            if ((ullFraction == ULLONG_MAX) /*&& (errno != 0)*/)
             {
                 result = FST_OVERFLOW;
             }
@@ -589,7 +589,7 @@ float strtof_s(const char* nptr, char** endptr)
         case FST_INFINITY:
             /*Codes_SRS_CRT_ABSTRACTIONS_21_023: [If the string is 'INF' of 'INFINITY' (ignoring case), the strtof_s must return the INFINITY value for float.]*/
             result = INFINITY * (signal);
-            errno = 0;
+            // errno = 0;
             break;
         case FST_NAN:
             /*Codes_SRS_CRT_ABSTRACTIONS_21_024: [If the string is 'NAN' or 'NAN(...)' (ignoring case), the strtof_s must return 0.0f and points endptr to the first character after the 'NAN' sequence.]*/
@@ -606,13 +606,13 @@ float strtof_s(const char* nptr, char** endptr)
             {
                 /*Codes_SRS_CRT_ABSTRACTIONS_21_022: [If the correct value is outside the range, the strtof_s returns the value plus or minus HUGE_VALF, and errno will receive the value ERANGE.]*/
                 result = HUGE_VALF * (signal);
-                errno = ERANGE;
+                // errno = ERANGE;
             }
             break;
         case FST_OVERFLOW:
             /*Codes_SRS_CRT_ABSTRACTIONS_21_022: [If the correct value is outside the range, the strtof_s returns the value plus or minus HUGE_VALF, and errno will receive the value ERANGE.]*/
             result = HUGE_VALF * (signal);
-            errno = ERANGE;
+            // errno = ERANGE;
             break;
         default:
             /*Codes_SRS_CRT_ABSTRACTIONS_21_020: [If the subject sequence is empty or does not have the expected form, the strtof_s must not perform any conversion and must returns 0.0f; the value of nptr is stored in the object pointed to by endptr, provided that endptr is not a NULL pointer.]*/
@@ -650,7 +650,7 @@ long double strtold_s(const char* nptr, char** endptr)
         case FST_INFINITY:
             /*Codes_SRS_CRT_ABSTRACTIONS_21_033: [If the string is 'INF' of 'INFINITY' (ignoring case), the strtold_s must return the INFINITY value for long double.]*/
             result = (long double)INFINITY * (long double)(signal);
-            errno = 0;
+            // errno = 0;
             break;
         case FST_NAN:
             /*Codes_SRS_CRT_ABSTRACTIONS_21_034: [If the string is 'NAN' or 'NAN(...)' (ignoring case), the strtold_s must return 0.0 and points endptr to the first character after the 'NAN' sequence.]*/
@@ -667,13 +667,13 @@ long double strtold_s(const char* nptr, char** endptr)
             {
                 /*Codes_SRS_CRT_ABSTRACTIONS_21_032: [If the correct value is outside the range, the strtold_s returns the value plus or minus HUGE_VALL, and errno will receive the value ERANGE.]*/
                 result = (long double)HUGE_VALF * (long double)(signal);
-                errno = ERANGE;
+                // errno = ERANGE;
             }
             break;
         case FST_OVERFLOW:
             /*Codes_SRS_CRT_ABSTRACTIONS_21_032: [If the correct value is outside the range, the strtold_s returns the value plus or minus HUGE_VALL, and errno will receive the value ERANGE.]*/
             result = (long double)HUGE_VALF * (long double)(signal);
-            errno = ERANGE;
+            // errno = ERANGE;
             break;
         default:
             /*Codes_SRS_CRT_ABSTRACTIONS_21_030: [If the subject sequence is empty or does not have the expected form, the strtold_s must not perform any conversion and must returns 0.0; the value of nptr is stored in the object pointed to by endptr, provided that endptr is not a NULL pointer.]*/
