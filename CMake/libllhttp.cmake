@@ -13,6 +13,7 @@ set(LLHTTP_INC
 
 # setup static library
 add_library(llhttp STATIC ${LLHTTP_SRC})
+target_compile_options(llhttp PUBLIC -mcpu=cortex-m33)
 target_include_directories(llhttp PUBLIC ${LLHTTP_INC})
 
 include(GNUInstallDirs)

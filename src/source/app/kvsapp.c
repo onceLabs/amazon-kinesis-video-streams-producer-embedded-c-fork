@@ -31,6 +31,7 @@
 
 #include "kvs/kvsapp.h"
 #include "kvs/kvsapp_options.h"
+#include <zephyr/kernel.h>
 
 /* Internal headers */
 #include "os/allocator.h"
@@ -66,7 +67,8 @@ typedef struct OnMkvSentCallbackInfo
 
 typedef struct KvsApp
 {
-    LOCK_HANDLE xLock;
+    //LOCK_HANDLE xLock;
+    struct k_mutex *xLockMutex;
 
     char *pHost;
     char *pRegion;
@@ -912,7 +914,7 @@ KvsAppHandle KvsApp_create(const char *pcHost, const char *pcRegion, const char 
     {
         memset(pKvs, 0, sizeof(KvsApp_t));
 
-        if ((pKvs->xLock = Lock_Init()) == NULL)
+        if (k_mutex_init(pKvs->xLockMutex))//(pKvs->xLock = Lock_Init()) == NULL)
         {
             res = KVS_ERROR_LOCK_ERROR;
             LogError("Failed to init lock");
@@ -966,7 +968,7 @@ void KvsApp_terminate(KvsAppHandle handle)
 {
     KvsApp_t *pKvs = (KvsApp_t *)handle;
 
-    if (pKvs != NULL && Lock(pKvs->xLock) == LOCK_OK)
+    if (pKvs != NULL && k_mutex_lock(pKvs->xLockMutex, K_FOREVER))
     {
         if (pKvs->xStreamHandle != NULL)
         {
@@ -1063,9 +1065,9 @@ void KvsApp_terminate(KvsAppHandle handle)
             pKvs->pPps = NULL;
         }
 
-        Unlock(pKvs->xLock);
+        k_mutex_unlock(pKvs->xLockMutex);
 
-        Lock_Deinit(pKvs->xLock);
+        //Lock_Deinit(pKvs->xLock);
 
         memset(pKvs, 0, sizeof(KvsApp_t));
         kvsFree(pKvs);
@@ -1361,7 +1363,7 @@ int KvsApp_close(KvsAppHandle handle)
     {
         if (pKvs->xPutMediaHandle != NULL)
         {
-            if (Lock(pKvs->xLock) != LOCK_OK)
+            if (k_mutex_lock(pKvs->xLockMutex, K_FOREVER))
             {
                 res = KVS_ERROR_LOCK_ERROR;
                 LogError("Failed to lock");
@@ -1371,7 +1373,7 @@ int KvsApp_close(KvsAppHandle handle)
                 Kvs_putMediaFinish(pKvs->xPutMediaHandle);
                 pKvs->xPutMediaHandle = NULL;
                 pKvs->isEbmlHeaderUpdated = false;
-                Unlock(pKvs->xLock);
+                k_mutex_unlock(pKvs->xLockMutex);
             }
         }
     }

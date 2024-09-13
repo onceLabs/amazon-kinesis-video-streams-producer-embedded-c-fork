@@ -11,6 +11,7 @@ set(PARSON_INC
 
 # setup static library
 add_library(parson STATIC ${PARSON_SRC})
+target_compile_options(parson PUBLIC -mcpu=cortex-m33)
 target_include_directories(parson PUBLIC ${PARSON_INC})
 
 include(GNUInstallDirs)
