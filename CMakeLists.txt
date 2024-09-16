@@ -5,7 +5,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake;${CMAKE_MODULE_PATH}")
 # set(CMAKE_SYSTEM_VERSION "0.0.0")
 set(CMAKE_CROSSCOMPILING "TRUE")
 # set(CMAKE_SYSTEM_PROCESSOR "armv8-m")
-set(CMAKE_EXE_LINKER_FLAGS_INIT "--specs=nosys.specs")
+set(CMAKE_EXE_LINKER_FLAGS_INIT "--specs=nosys.specs") #picolibc?
 # export CC=/opt/zephyr-sdk-0.16.5/arm-zephyr-eabi/bin/arm-zephyr-eabi-gcc
 project(kvs-embedded-c)
 

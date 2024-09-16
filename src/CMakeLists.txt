@@ -101,6 +101,15 @@ if(UNIX)
     )
 endif()
 
+message(STATUS "__ZEPHYR__: ${__ZEPHYR__}")
+
+if (__ZEPHYR__ OR ZEPHYR_DIR)
+    message(STATUS "Adding ZEPHYR PORT files (time + random)")
+    set(LIB_SRC ${LIB_SRC}
+        ${LIB_DIR}/port/port_zephyr.c
+    )
+endif()
+
 message(STATUS "LIB_PUB_INC: ${LIB_PUB_INC}")
 message(STATUS "ZEPHYR_BASE: ${ZEPHYR_BASE}")
 # setup static library
@@ -116,6 +125,12 @@ endif()
 target_link_libraries(${LIB_NAME} PUBLIC
     ${LINK_LIBS}
 )
+target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedtls.a)
+target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedcrypto_base.a)
+target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedcrypto.a)
+target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedx509.a)
+
+
 
 # Zephyr specific
 # if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Zephyr")

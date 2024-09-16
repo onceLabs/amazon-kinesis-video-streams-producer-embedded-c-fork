@@ -45,7 +45,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
-#include <errno.h>
+#include <errno.h> // Until this can use Zephyr's, use lerrno below
+static int lerrno = 0;
 
 /* Apparently sscanf is not implemented in some "standard" libraries, so don't use it, if you
  * don't have to. */
@@ -1073,12 +1074,12 @@ static JSON_Value * parse_boolean_value(const char **string) {
 static JSON_Value * parse_number_value(const char **string) {
     char *end;
     double number = 0;
-    errno = 0;
+    lerrno = 0;
     number = strtod(*string, &end);
-    if (errno == ERANGE && (number <= -HUGE_VAL || number >= HUGE_VAL)) {
+    if (lerrno == ERANGE && (number <= -HUGE_VAL || number >= HUGE_VAL)) {
         return NULL;
     }
-    if ((errno && errno != ERANGE) || !is_decimal(*string, end - *string)) {
+    if ((lerrno && lerrno != ERANGE) || !is_decimal(*string, end - *string)) {
         return NULL;
     }
     *string = end;
