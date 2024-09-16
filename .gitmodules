@@ -1,21 +1,5 @@
-[submodule "libraries/3rdparty/mbedtls"]
-	path = libraries/3rdparty/mbedtls
-	url = https://github.com/ARMmbed/mbedtls.git
-[submodule "libraries/3rdparty/parson"]
-	path = libraries/3rdparty/parson
-	url = https://github.com/kgabis/parson.git
-[submodule "libraries/3rdparty/c-utility"]
-	path = libraries/3rdparty/c-utility
-	url = https://github.com/Azure/azure-c-shared-utility.git
-	branch = lts_07_2020
-[submodule "libraries/3rdparty/tlsf"]
-	path = libraries/3rdparty/tlsf
-	url = https://github.com/mattconte/tlsf.git
-[submodule "libraries/3rdparty/llhttp"]
-	path = libraries/3rdparty/llhttp
-	url = https://github.com/nodejs/llhttp.git
-	branch = release
+
 [submodule "libraries/amazon/amazon-kinesis-video-streams-media-interface"]
 	path = libraries/amazon/amazon-kinesis-video-streams-media-interface
-	url = https://github.com/aws-samples/amazon-kinesis-video-streams-media-interface.git
-	branch = main
+	url = https://github.com/onceLabs/amazon-kinesis-video-streams-media-interface.git
+	branch = patch/development

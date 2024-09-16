@@ -1,3 +1,6 @@
+.*
+!.gitmodules
+
 build
 
 samples/kvs-esp32/sdkconfig.old
