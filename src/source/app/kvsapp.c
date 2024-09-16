@@ -65,10 +65,11 @@ typedef struct OnMkvSentCallbackInfo
     void *pAppData;
 } OnMkvSentCallbackInfo_t;
 
+struct k_mutex wrapper_mutex;
 typedef struct KvsApp
 {
     //LOCK_HANDLE xLock;
-    struct k_mutex *xLockMutex;
+    struct k_mutex *xLockMutex;// = &wrapper_mutex;
 
     char *pHost;
     char *pRegion;
@@ -899,6 +900,7 @@ KvsAppHandle KvsApp_create(const char *pcHost, const char *pcRegion, const char 
 {
     int res = KVS_ERRNO_NONE;
     KvsApp_t *pKvs = NULL;
+    
 
     if (pcHost == NULL || pcRegion == NULL || pcService == NULL || pcStreamName == NULL)
     {
@@ -913,7 +915,7 @@ KvsAppHandle KvsApp_create(const char *pcHost, const char *pcRegion, const char 
     else
     {
         memset(pKvs, 0, sizeof(KvsApp_t));
-
+        pKvs->xLockMutex = &wrapper_mutex;
         if (k_mutex_init(pKvs->xLockMutex))//(pKvs->xLock = Lock_Init()) == NULL)
         {
             res = KVS_ERROR_LOCK_ERROR;
