@@ -244,11 +244,10 @@ static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, co
     int res = KVS_ERRNO_NONE;
     int retVal = 0;
 
-    struct sockaddr_in6 addr = {
-		  .sin6_family = AF_INET6,
-		  .sin6_port = htons(443),
-		  .sin6_addr = { { { 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0,
-				   0, 0, 0, 0, 0, 0, 0, 0x2 } } },
+    struct sockaddr_in addr = {
+		  .sin_family = AF_INET,
+		  .sin_port = htons(443),
+		  .sin_addr = { { { 34, 233, 171, 64 } } },
 	  };
 
     if (pxNet == NULL || pcHost == NULL || pcPort == NULL)
@@ -262,7 +261,7 @@ static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, co
         /* Propagate the res error */
     }
     //else if ((retVal = mbedtls_net_connect(&(pxNet->xFd), pcHost, pcPort, MBEDTLS_NET_PROTO_TCP)) != 0)
-    else if ((retVal = net_context_connect(pxNet->xFd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in6), connect_cb, K_NO_WAIT, INT_TO_POINTER(AF_INET6)) != 0))
+    else if ((retVal = net_context_connect(pxNet->xFd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in), connect_cb, K_NO_WAIT, INT_TO_POINTER(AF_INET)) != 0))
     {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
         LogError("Failed to connect to %s:%s (err:-%X)", pcHost, pcPort, -res);

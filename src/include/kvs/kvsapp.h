@@ -102,7 +102,8 @@ typedef struct DoWorkExParamter
  * @param[in] pcStreamName KVS stream name
  * @return KVS application handle
  */
-KvsAppHandle KvsApp_create(const char *pcHost, const char *pcRegion, const char *pcService, const char *pcStreamName);
+//.KvsAppHandle KvsApp_create(const char *pcHost, const char *pcRegion, const char *pcService, const char *pcStreamName);
+KvsAppHandle KvsApp_create(const char *pcHost, const char *pcRegion, const char *pcService, const char *pcStreamName, const char *secretKey, const char *accessKey);
 
 /**
  * Terminate a KVS application.
