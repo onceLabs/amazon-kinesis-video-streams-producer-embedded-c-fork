@@ -817,7 +817,7 @@ static int prvPutMediaDoWorkSendEndOfFrames(KvsApp_t *pKvs)
     return res;
 }
 
-KvsAppHandle KvsApp_create(const char *pcHost, const char *pcRegion, const char *pcService, const char *pcStreamName)
+KvsAppHandle KvsApp_create(const char *pcHost, const char *pcRegion, const char *pcService, const char *pcStreamName, const char *secretKey, const char *accessKey)
 {
     int res = KVS_ERRNO_NONE;
     KvsApp_t *pKvs = NULL;
@@ -853,8 +853,8 @@ KvsAppHandle KvsApp_create(const char *pcHost, const char *pcRegion, const char 
         else
         {
             pKvs->pDataEndpoint = NULL;
-            pKvs->pAwsAccessKeyId = NULL;
-            pKvs->pAwsSecretAccessKey = NULL;
+            pKvs->pAwsAccessKeyId = accessKey;
+            pKvs->pAwsSecretAccessKey = secretKey;
             pKvs->pIotCredentialHost = NULL;
             pKvs->pIotRoleAlias = NULL;
             pKvs->pIotThingName = NULL;

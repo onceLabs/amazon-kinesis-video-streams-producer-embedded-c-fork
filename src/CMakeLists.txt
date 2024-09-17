@@ -30,6 +30,7 @@ set(LIB_SRC
     ${LIB_DIR}/include/kvs/port.h
     ${LIB_DIR}/include/kvs/restapi.h
     ${LIB_DIR}/include/kvs/stream.h
+    ${LIB_DIR}/include/kvs/certs.h
     ${LIB_DIR}/source/app/kvsapp.c
     ${LIB_DIR}/source/codec/nalu.c
     ${LIB_DIR}/source/codec/sps_decode.c

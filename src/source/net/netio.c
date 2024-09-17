@@ -37,10 +37,14 @@
 /* Internal headers */
 #include "os/allocator.h"
 #include "net/netio.h"
+#include <zephyr/logging/log.h>
+#include "kvs/certs.h"
+
+LOG_MODULE_REGISTER(netio, LOG_LEVEL_DBG);
 
 #define DEFAULT_CONNECTION_TIMEOUT_MS       (10 * 1000)
 
-typedef struct NetIo
+typedef struct NetIo 
 {
     /* Basic ssl connection parameters */
     //mbedtls_net_context xFd;Not supported on zephyr, have to switch to net_context
@@ -59,6 +63,8 @@ typedef struct NetIo
     uint32_t uRecvTimeoutMs;
     uint32_t uSendTimeoutMs;
 } NetIo_t;
+
+NetIo_t *pxNet = NULL;
 
 static int prvCreateX509Cert(NetIo_t *pxNet)
 {
@@ -133,8 +139,11 @@ int zephyr_net_send(/*struct net_context*/void *context, const unsigned char *bu
     struct net_pkt *pkt;
     int ret;
 
-    NetIo_t *pxNet = NULL;
-    net_context_get(AF_INET, SOCK_STREAM, IPPROTO_TCP, &(pxNet->xFd));
+    // Cast context to NetIo_t
+    struct net_context *ctx = (struct net_context *)context;
+
+    //NetIo_t *pxNet = NULL;
+    //net_context_get(AF_INET, SOCK_STREAM, IPPROTO_TCP, &(pxNet->xFd));
 
     /* Allocate a network packet for the data */
     pkt = net_pkt_alloc_with_buffer(context, len, AF_UNSPEC, 0, K_NO_WAIT);
@@ -150,7 +159,7 @@ int zephyr_net_send(/*struct net_context*/void *context, const unsigned char *bu
     }
 
     /* Send the packet over the context (non-blocking send) */
-    ret = net_context_send(pxNet->xFd, pkt->buffer->data, pkt->buffer->len, my_send_cb, K_NO_WAIT, NULL);
+    ret = net_context_send(ctx, pkt->buffer->data, pkt->buffer->len, my_send_cb, K_NO_WAIT, NULL);
     if (ret < 0) {
         net_pkt_unref(pkt);  // Free the packet on failure
         return ret;
@@ -163,6 +172,19 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
 {
     int res = KVS_ERRNO_NONE;
     int retVal = 0;
+
+    // // Log out the pointers
+    // LOG_DBG("Root CA: %p", pcRootCA);
+    // LOG_DBG("Device Cert: %p", pcCert);
+    // LOG_DBG("Device Private Key: %p", pcPrivKey);
+
+    // /* Log out the certificates  */
+    // LOG_HEXDUMP_DBG(pcRootCA, strlen(pcRootCA), "Root CA");
+    // LOG_HEXDUMP_DBG(pcCert, strlen(pcCert), "Device Cert");
+    // LOG_HEXDUMP_DBG(pcPrivKey, strlen(pcPrivKey), "Device Private Key");
+    // LOG_DBG("Root CA:\n%s\n", pcRootCA);
+    // LOG_DBG("Device Cert:\n%s\n", pcCert);
+    // LOG_DBG("Device Private Key:\n%s\n", pcPrivKey);
 
     if (pxNet == NULL)
     {
@@ -186,15 +208,35 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
 
             if (pcRootCA != NULL && pcCert != NULL && pcPrivKey != NULL)
             {
-                if ((retVal = mbedtls_x509_crt_parse(pxNet->pRootCA, (void *)pcRootCA, strlen(pcRootCA) + 1)) != 0 ||
-                    (retVal = mbedtls_x509_crt_parse(pxNet->pCert, (void *)pcCert, strlen(pcCert) + 1)) != 0 ||
-                    (retVal = mbedtls_pk_parse_key(pxNet->pPrivKey, (void *)pcPrivKey, strlen(pcPrivKey) + 1, NULL, 0, mbedtls_psa_get_random, MBEDTLS_PSA_RANDOM_STATE)) != 0)
+                // Log out the pointers
+                LOG_DBG("Root CA: %p", pcRootCA);
+                LOG_DBG("Device Cert: %p", pcCert);
+                LOG_DBG("Device Private Key: %p", pcPrivKey);
+                
+                if ((retVal = mbedtls_x509_crt_parse(pxNet->pRootCA, (void *)pcRootCA, strlen(pcRootCA) + 1)) != 0 )
                 {
                     res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
-                    LogError("Failed to parse x509 (err:-%X)", -res);
+                    LOG_ERR("Failed to parse root x509 (err:-%02x)", -retVal);
+                } else {
+                    LOG_DBG("Successfully parsed root x509");
+                }
+                if ((retVal = mbedtls_x509_crt_parse(pxNet->pCert, (void *)pcCert, strlen(pcCert) + 1)) != 0)
+                {
+                    res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
+                    LOG_ERR("Failed to parse device x509 (err:-%02x)", -retVal);
                 }
                 else
                 {
+                    LOG_DBG("Successfully parsed device x509");
+                }
+                if ((retVal = mbedtls_pk_parse_key(pxNet->pPrivKey, (void *)pcPrivKey, strlen(pcPrivKey) + 1, NULL, 0, mbedtls_psa_get_random, MBEDTLS_PSA_RANDOM_STATE)) != 0)
+                {
+                    res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
+                    LOG_ERR("Failed to parse private x509 (err:-%02x)", -retVal);
+                }
+                else
+                {
+                    LOG_DBG("Successfully parsed private x509");
                     mbedtls_ssl_conf_authmode(&(pxNet->xConf), MBEDTLS_SSL_VERIFY_REQUIRED);
                     mbedtls_ssl_conf_ca_chain(&(pxNet->xConf), pxNet->pRootCA, NULL);
 
@@ -221,6 +263,7 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
         }
     }
 
+    LOG_DBG("Init config done");
     return res;
 }
 
@@ -244,38 +287,37 @@ static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, co
     int res = KVS_ERRNO_NONE;
     int retVal = 0;
 
-    struct sockaddr_in6 addr = {
-		  .sin6_family = AF_INET6,
-		  .sin6_port = htons(443),
-		  .sin6_addr = { { { 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0,
-				   0, 0, 0, 0, 0, 0, 0, 0x2 } } },
+    struct sockaddr_in addr = {
+		  .sin_family = AF_INET,
+		  .sin_port = htons(443),
+		  .sin_addr = { { { 34, 233, 171, 64 } } }
 	  };
 
     if (pxNet == NULL || pcHost == NULL || pcPort == NULL)
     {
         res = KVS_ERROR_INVALID_ARGUMENT;
-        LogError("Invalid argument");
+        LOG_ERR("Invalid argument");
     }
     else if ((pcRootCA != NULL && pcCert != NULL && pcPrivKey != NULL) && (res = prvCreateX509Cert(pxNet)) != KVS_ERRNO_NONE)
     {
-        LogError("Failed to init x509 (err:-%X)", -res);
+        LOG_ERR("Failed to init x509 (err:-%X)", -res);
         /* Propagate the res error */
     }
     //else if ((retVal = mbedtls_net_connect(&(pxNet->xFd), pcHost, pcPort, MBEDTLS_NET_PROTO_TCP)) != 0)
-    else if ((retVal = net_context_connect(pxNet->xFd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in6), connect_cb, K_NO_WAIT, INT_TO_POINTER(AF_INET6)) != 0))
+    else if ((retVal = net_context_connect(pxNet->xFd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in), connect_cb, K_MSEC(200), INT_TO_POINTER(AF_INET)) != 0))
     {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
-        LogError("Failed to connect to %s:%s (err:-%X)", pcHost, pcPort, -res);
+        LOG_ERR("Failed to connect to %s (err:-%d)", pcHost, retVal);
     }
     else if ((res = prvInitConfig(pxNet, pcHost, pcRootCA, pcCert, pcPrivKey)) != KVS_ERRNO_NONE)
     {
-        LogError("Failed to config ssl (err:-%X)", -res);
+        LOG_ERR("Failed to config ssl (err:-%X)", -res);
         /* Propagate the res error */
     }
     else if ((retVal = mbedtls_ssl_handshake(&(pxNet->xSsl))) != 0)
     {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
-        LogError("ssl handshake err (-%X)", -res);
+        LOG_ERR("ssl handshake err (-%X)", -res);
     }
     else
     {
@@ -287,14 +329,20 @@ static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, co
 
 NetIoHandle NetIo_create(void)
 {
-    NetIo_t *pxNet = NULL;
+    //Log out the call
 
     if ((pxNet = (NetIo_t *)kvsMalloc(sizeof(NetIo_t))) != NULL)
     {
         memset(pxNet, 0, sizeof(NetIo_t));
 
         //mbedtls_net_init(&(pxNet->xFd));
-        net_context_get(AF_INET, SOCK_STREAM, IPPROTO_TCP, &(pxNet->xFd));
+        int ret = net_context_get(AF_INET, SOCK_STREAM, IPPROTO_TCP, &(pxNet->xFd));
+
+        if (ret < 0) {
+            LOG_ERR("Failed to get context: %d", ret);
+            kvsFree(pxNet);
+            return NULL;
+        }
         mbedtls_ssl_init(&(pxNet->xSsl));
         mbedtls_ssl_config_init(&(pxNet->xConf));
         mbedtls_ctr_drbg_init(&(pxNet->xCtrDrbg));
@@ -352,7 +400,7 @@ void NetIo_terminate(NetIoHandle xNetIoHandle)
 
 int NetIo_connect(NetIoHandle xNetIoHandle, const char *pcHost, const char *pcPort)
 {
-    return prvConnect(xNetIoHandle, pcHost, pcPort, NULL, NULL, NULL);
+    return prvConnect(xNetIoHandle, pcHost, pcPort, aws_root_ca, aws_device_cert, aws_private_key);
 }
 
 int NetIo_connectWithX509(NetIoHandle xNetIoHandle, const char *pcHost, const char *pcPort, const char *pcRootCA, const char *pcCert, const char *pcPrivKey)
