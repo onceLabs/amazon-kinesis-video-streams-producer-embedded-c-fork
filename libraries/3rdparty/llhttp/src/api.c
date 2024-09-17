@@ -360,10 +360,10 @@ int llhttp__on_chunk_complete(llhttp_t* s, const char* p, const char* endp) {
 void llhttp__debug(llhttp_t* s, const char* p, const char* endp,
                    const char* msg) {
   if (p == endp) {
-    fprintf(stderr, "p=%p type=%d flags=%02x next=null debug=%s\n", s, s->type,
+    printk("p=%p type=%d flags=%02x next=null debug=%s\n", s, s->type,
             s->flags, msg);
   } else {
-    fprintf(stderr, "p=%p type=%d flags=%02x next=%02x   debug=%s\n", s,
+    printk("p=%p type=%d flags=%02x next=%02x   debug=%s\n", s,
             s->type, s->flags, *p, msg);
   }
 }

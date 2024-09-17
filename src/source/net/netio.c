@@ -28,7 +28,9 @@
 // #include <mbedtls/net.h>
 #include <mbedtls/net_sockets.h>
 #include <zephyr/posix/sys/select.h>
-
+#include <zephyr/net/net_context.h>
+#include <zephyr/net/net_ip.h>
+#include <zephyr/net/net_pkt.h>
 /* Public headers */
 #include "kvs/errors.h"
 
@@ -41,7 +43,8 @@
 typedef struct NetIo
 {
     /* Basic ssl connection parameters */
-    mbedtls_net_context xFd;
+    //mbedtls_net_context xFd;Not supported on zephyr, have to switch to net_context
+    struct net_context *xFd;
     mbedtls_ssl_context xSsl;
     mbedtls_ssl_config xConf;
     mbedtls_ctr_drbg_context xCtrDrbg;
@@ -81,6 +84,81 @@ static int prvCreateX509Cert(NetIo_t *pxNet)
     return res;
 }
 
+/* Callback function that gets called when data is received */
+void my_recv_cb(
+  struct net_context *context, struct net_pkt *pkt,
+				      union net_ip_header *ip_hdr,
+				      union net_proto_header *proto_hdr,
+				      int status,
+				      void *user_data)
+{
+    if (pkt) {
+        // Data received, process packet here
+    } else if (status == -ETIMEDOUT) {
+        // Timeout occurred
+    }
+}
+
+/* Function that sets up receive with a timeout */
+int zephyr_net_recv_timeout(/*struct net_context*/void *context, unsigned char *buf, size_t len, uint32_t timeout_ms)
+{
+    int ret;
+
+    /* Convert timeout_ms to Zephyr timeout format */
+    k_timeout_t timeout = K_MSEC(timeout_ms);
+
+    /* Set up the receive callback with the specified timeout */
+    ret = net_context_recv(context, my_recv_cb, timeout, NULL);
+    if (ret < 0) {
+        // Handle error
+        return ret;
+    }
+
+    return 0; // Success
+}
+
+/* Callback function that gets called when data is sent */
+void my_send_cb(struct net_context *context, int status, void *user_data)
+{
+    if (status == 0) {
+        // Data sent successfully
+    } else {
+        // Handle error (e.g., connection closed, failure, etc.)
+    }
+}
+
+/* Function to send data (equivalent to mbedtls_net_send) */
+int zephyr_net_send(/*struct net_context*/void *context, const unsigned char *buf, size_t len)
+{
+    struct net_pkt *pkt;
+    int ret;
+
+    NetIo_t *pxNet = NULL;
+    net_context_get(AF_INET, SOCK_STREAM, IPPROTO_TCP, &(pxNet->xFd));
+
+    /* Allocate a network packet for the data */
+    pkt = net_pkt_alloc_with_buffer(context, len, AF_UNSPEC, 0, K_NO_WAIT);
+    if (!pkt) {
+        return -ENOMEM;  // Failed to allocate packet
+    }
+
+    /* Copy the data into the packet */
+    ret = net_pkt_write(pkt, buf, len);
+    if (ret < 0) {
+        net_pkt_unref(pkt);  // Free the packet on failure
+        return ret;
+    }
+
+    /* Send the packet over the context (non-blocking send) */
+    ret = net_context_send(pxNet->xFd, pkt->buffer->data, pkt->buffer->len, my_send_cb, K_NO_WAIT, NULL);
+    if (ret < 0) {
+        net_pkt_unref(pkt);  // Free the packet on failure
+        return ret;
+    }
+
+    return 0;  // Success
+}
+
 static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootCA, const char *pcCert, const char *pcPrivKey)
 {
     int res = KVS_ERRNO_NONE;
@@ -92,7 +170,7 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
     }
     else
     {
-        mbedtls_ssl_set_bio(&(pxNet->xSsl), &(pxNet->xFd), mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
+        mbedtls_ssl_set_bio(&(pxNet->xSsl), &(pxNet->xFd), zephyr_net_send, NULL, zephyr_net_recv_timeout);
 
         if ((retVal = mbedtls_ssl_config_defaults(&(pxNet->xConf), MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT)) != 0)
         {
@@ -146,10 +224,32 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
     return res;
 }
 
+static void connect_cb(struct net_context *context, int status,
+		       void *user_data)
+{
+	sa_family_t family = POINTER_TO_INT(user_data);
+
+	if (net_context_get_family(context) != family) {
+		// TC_ERROR("Connect family mismatch %d should be %d\n",
+		//        net_context_get_family(context), family);
+		// cb_failure = true;
+		return;
+	}
+
+	//cb_failure = false;
+}
+
 static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, const char *pcRootCA, const char *pcCert, const char *pcPrivKey)
 {
     int res = KVS_ERRNO_NONE;
     int retVal = 0;
+
+    struct sockaddr_in6 addr = {
+		  .sin6_family = AF_INET6,
+		  .sin6_port = htons(443),
+		  .sin6_addr = { { { 0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0,
+				   0, 0, 0, 0, 0, 0, 0, 0x2 } } },
+	  };
 
     if (pxNet == NULL || pcHost == NULL || pcPort == NULL)
     {
@@ -161,7 +261,8 @@ static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, co
         LogError("Failed to init x509 (err:-%X)", -res);
         /* Propagate the res error */
     }
-    else if ((retVal = mbedtls_net_connect(&(pxNet->xFd), pcHost, pcPort, MBEDTLS_NET_PROTO_TCP)) != 0)
+    //else if ((retVal = mbedtls_net_connect(&(pxNet->xFd), pcHost, pcPort, MBEDTLS_NET_PROTO_TCP)) != 0)
+    else if ((retVal = net_context_connect(pxNet->xFd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in6), connect_cb, K_NO_WAIT, INT_TO_POINTER(AF_INET6)) != 0))
     {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
         LogError("Failed to connect to %s:%s (err:-%X)", pcHost, pcPort, -res);
@@ -192,7 +293,8 @@ NetIoHandle NetIo_create(void)
     {
         memset(pxNet, 0, sizeof(NetIo_t));
 
-        mbedtls_net_init(&(pxNet->xFd));
+        //mbedtls_net_init(&(pxNet->xFd));
+        net_context_get(AF_INET, SOCK_STREAM, IPPROTO_TCP, &(pxNet->xFd));
         mbedtls_ssl_init(&(pxNet->xSsl));
         mbedtls_ssl_config_init(&(pxNet->xConf));
         mbedtls_ctr_drbg_init(&(pxNet->xCtrDrbg));
@@ -219,7 +321,8 @@ void NetIo_terminate(NetIoHandle xNetIoHandle)
     {
         mbedtls_ctr_drbg_free(&(pxNet->xCtrDrbg));
         mbedtls_entropy_free(&(pxNet->xEntropy));
-        mbedtls_net_free(&(pxNet->xFd));
+        //mbedtls_net_free(&(pxNet->xFd));
+        net_context_put(pxNet->xFd);
         mbedtls_ssl_free(&(pxNet->xSsl));
         mbedtls_ssl_config_free(&(pxNet->xConf));
 
@@ -346,23 +449,31 @@ bool NetIo_isDataAvailable(NetIoHandle xNetIoHandle)
 
     if (pxNet != NULL)
     {
-        fd = pxNet->xFd.fd;
-        if (fd >= 0)
+        if (k_fifo_is_empty(&(pxNet->xFd->recv_q)))
         {
-            FD_ZERO(&read_fds);
-            FD_SET(fd, &read_fds);
-
-            tv.tv_sec = 0;
-            tv.tv_usec = 0;
-
-            if (select(fd + 1, &read_fds, NULL, NULL, &tv) >= 0)
-            {
-                if (FD_ISSET(fd, &read_fds))
-                {
-                    bDataAvailable = true;
-                }
-            }
+            bDataAvailable = false;
         }
+        else
+        {
+            bDataAvailable = true;
+        }
+        // fd = pxNet->xFd.fd;
+        // if (fd >= 0)
+        // {
+        //     FD_ZERO(&read_fds);
+        //     FD_SET(fd, &read_fds);
+
+        //     tv.tv_sec = 0;
+        //     tv.tv_usec = 0;
+
+        //     if (select(fd + 1, &read_fds, NULL, NULL, &tv) >= 0)
+        //     {
+        //         if (FD_ISSET(fd, &read_fds))
+        //         {
+        //             bDataAvailable = true;
+        //         }
+        //     }
+        // }
     }
 
     return bDataAvailable;
@@ -399,23 +510,23 @@ int NetIo_setSendTimeout(NetIoHandle xNetIoHandle, unsigned int uSendTimeoutMs)
     }
     else
     {
-        pxNet->uSendTimeoutMs = (uint32_t)uSendTimeoutMs;
-        fd = pxNet->xFd.fd;
-        tv.tv_sec = uSendTimeoutMs / 1000;
-        tv.tv_usec = (uSendTimeoutMs % 1000) * 1000;
+        // pxNet->uSendTimeoutMs = (uint32_t)uSendTimeoutMs;
+        // fd = pxNet->xFd.fd;
+        // tv.tv_sec = uSendTimeoutMs / 1000;
+        // tv.tv_usec = (uSendTimeoutMs % 1000) * 1000;
 
-        if (fd < 0)
-        {
-            /* Do nothing when connection hasn't established. */
-        }
-        else if (setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (void *)&tv, sizeof(tv)) != 0)
-        {
-            res = KVS_ERROR_NETIO_UNABLE_TO_SET_SEND_TIMEOUT;
-        }
-        else
-        {
-            /* nop */
-        }
+        // if (fd < 0)
+        // {
+        //     /* Do nothing when connection hasn't established. */
+        // }
+        // else if (setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (void *)&tv, sizeof(tv)) != 0)
+        // {
+        //     res = KVS_ERROR_NETIO_UNABLE_TO_SET_SEND_TIMEOUT;
+        // }
+        // else
+        // {
+        //     /* nop */
+        // }
     }
 
     return res;

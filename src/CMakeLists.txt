@@ -18,8 +18,6 @@ set(ZEPHYR_MODUELS_DIR /opt/nordic/ncs/v2.7.0/modules)
 add_definitions(-DCONFIG_ARM)
 add_definitions(-DCONFIG_MP_MAX_NUM_CPUS=1)
 
-
-
 set(LIB_SRC
     ${GENERATED_HEADERS_DIR}/autoconf.h
     ${LIB_DIR}/include/kvs/kvsapp.h
@@ -53,6 +51,8 @@ set(LIB_SRC
     ${LIB_DIR}/source/restful/iot/iot_credential_provider.c
     ${LIB_DIR}/source/restful/kvs/restapi_kvs.c
     ${LIB_DIR}/source/stream/stream.c
+    ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include/mbedtls/ctr_drbg.h
+    ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include/mbedtls/entropy.h
 )
 
 set(LIB_PUB_INC
@@ -62,6 +62,7 @@ set(LIB_PUB_INC
     ${ZEPHYR_DIR}/subsys/testsuite/ztest/include/zephyr
     ${GENERATED_HEADERS_DIR}
     ${GENERATED_HEADERS_DIR}/syscalls
+    ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include/mbedtls
 )
 
 set(LIB_PRV_INC
@@ -114,6 +115,8 @@ message(STATUS "LIB_PUB_INC: ${LIB_PUB_INC}")
 message(STATUS "ZEPHYR_BASE: ${ZEPHYR_BASE}")
 # setup static library
 add_library(${LIB_NAME} STATIC ${LIB_SRC})
+
+
 set_target_properties(${LIB_NAME} PROPERTIES POSITION_INDEPENDENT_CODE 1)
 target_include_directories(${LIB_NAME} PUBLIC ${LIB_PUB_INC})
 target_include_directories(${LIB_NAME} PRIVATE ${LIB_PRV_INC})
@@ -125,23 +128,24 @@ endif()
 target_link_libraries(${LIB_NAME} PUBLIC
     ${LINK_LIBS}
 )
+
 target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedtls.a)
 target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedcrypto_base.a)
 target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedcrypto.a)
 target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedx509.a)
 
 
-
+# zephyr_library_link_libraries(mbedTLS)
 # Zephyr specific
 # if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Zephyr")
 target_link_libraries(${LIB_NAME} PRIVATE
-    zephyr_interface
-    zephyr_kernel
-    zephyr_libc
-    zephyr_minimal
-    zephyr_posix
-    zephyr_syscall
-    zephyr_types
+  zephyr_interface
+  zephyr_kernel
+  zephyr_libc
+  zephyr_minimal
+  zephyr_posix
+  zephyr_syscall
+  zephyr_types
 )
 # endif()
 

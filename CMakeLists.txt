@@ -115,18 +115,6 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 #     include(libmbedtls)
 # endif()
 
-zephyr_library_include_directories(libraries/3rdparty/c-utility/inc)
-zephyr_library_include_directories(libraries/3rdparty/c-utility/deps/azure-macro-utils-c/inc)
-zephyr_library_include_directories(libraries/3rdparty/c-utility/deps/umock-c/inc)
-zephyr_library_include_directories(libraries/3rdparty/c-utility/deps/parson)
-zephyr_library_include_directories(libraries/3rdparty/c-utility/src)
-
-zephyr_include_directories(libraries/3rdparty/c-utility/inc)
-zephyr_include_directories(libraries/3rdparty/c-utility/deps/azure-macro-utils-c/inc)
-zephyr_include_directories(libraries/3rdparty/c-utility/deps/umock-c/inc)
-zephyr_include_directories(libraries/3rdparty/c-utility/deps/parson)
-zephyr_include_directories(libraries/3rdparty/c-utility/src)
-
 include(libllhttp)
 include(libparson)
 include(libaziotsharedutil)
