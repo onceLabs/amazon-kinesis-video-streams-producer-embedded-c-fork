@@ -143,7 +143,7 @@ int zephyr_net_send(/*struct net_context*/void *context, const unsigned char *bu
     struct net_context *ctx = (struct net_context *)context;
 
     //NetIo_t *pxNet = NULL;
-    //net_context_get(AF_INET, SOCK_STREAM, IPPROTO_TCP, &(pxNet->xFd));
+    net_context_get(AF_INET, SOCK_STREAM, IPPROTO_TCP, &(pxNet->xFd));
 
     /* Allocate a network packet for the data */
     pkt = net_pkt_alloc_with_buffer(context, len, AF_UNSPEC, 0, K_NO_WAIT);
@@ -159,7 +159,7 @@ int zephyr_net_send(/*struct net_context*/void *context, const unsigned char *bu
     }
 
     /* Send the packet over the context (non-blocking send) */
-    ret = net_context_send(ctx, pkt->buffer->data, pkt->buffer->len, my_send_cb, K_NO_WAIT, NULL);
+    ret = net_context_send(pxNet->xFd, pkt->buffer->data, pkt->buffer->len, my_send_cb, K_MSEC(5), NULL);
     if (ret < 0) {
         net_pkt_unref(pkt);  // Free the packet on failure
         return ret;
@@ -290,7 +290,7 @@ static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, co
     struct sockaddr_in addr = {
 		  .sin_family = AF_INET,
 		  .sin_port = htons(443),
-		  .sin_addr = { { { 34, 233, 171, 64 } } }
+		  .sin_addr = { { { 3, 219, 160, 238 } } }
 	  };
 
     if (pxNet == NULL || pcHost == NULL || pcPort == NULL)
@@ -317,9 +317,9 @@ static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, co
     else if ((retVal = mbedtls_ssl_handshake(&(pxNet->xSsl))) != 0)
     {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
-        LOG_ERR("ssl handshake err (-%X)", -res);
+        LOG_ERR("ssl handshake err (-%X)", -retVal);
     }
-    else
+    else 
     {
         /* nop */
     }
