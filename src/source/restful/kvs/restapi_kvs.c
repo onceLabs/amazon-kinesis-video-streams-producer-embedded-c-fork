@@ -753,12 +753,12 @@ int Kvs_describeStream(KvsServiceParameter_t *pServPara, KvsDescribeStreamParame
         LogError("Failed to connect to %s", pServPara->pcHost);
         /* Propagate the res error */
     }
-        else if ((res = NetIo_setSendTimeout(xNetIoHandle, pServPara->uSendTimeoutMs)) != KVS_ERRNO_NONE)
+    else if ((res = NetIo_setSendTimeout(xNetIoHandle, pServPara->uSendTimeoutMs)) != KVS_ERRNO_NONE)
     {
         LogError("Failed to connect to %s", pServPara->pcHost);
         /* Propagate the res error */
     }
-        else if ((res = NetIo_connect(xNetIoHandle, pServPara->pcHost, PORT_HTTPS)) != KVS_ERRNO_NONE)
+    else if ((res = NetIo_connect(xNetIoHandle, pServPara->pcHost, PORT_HTTPS)) != KVS_ERRNO_NONE)
     {
         LogError("Failed to connect to %s", pServPara->pcHost);
         /* Propagate the res error */

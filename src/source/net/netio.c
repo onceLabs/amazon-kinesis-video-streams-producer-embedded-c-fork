@@ -64,6 +64,7 @@ typedef struct NetIo
     uint32_t uSendTimeoutMs;
 } NetIo_t;
 
+struct net_context ctx;
 NetIo_t *pxNet = NULL;
 
 static int prvCreateX509Cert(NetIo_t *pxNet)
@@ -133,20 +134,18 @@ void my_send_cb(struct net_context *context, int status, void *user_data)
     }
 }
 
+int zephyr_net_rcv(void *ctx,unsigned char *buf,size_t len){
+  return net_context_recv(ctx,my_recv_cb, K_FOREVER, NULL);
+}
+
 /* Function to send data (equivalent to mbedtls_net_send) */
-int zephyr_net_send(/*struct net_context*/void *context, const unsigned char *buf, size_t len)
+int zephyr_net_send(void *context, const unsigned char *buf, size_t len)
 {
     struct net_pkt *pkt;
     int ret;
 
-    // Cast context to NetIo_t
-    struct net_context *ctx = (struct net_context *)context;
-
-    //NetIo_t *pxNet = NULL;
-    net_context_get(AF_INET, SOCK_STREAM, IPPROTO_TCP, &(pxNet->xFd));
-
     /* Allocate a network packet for the data */
-    pkt = net_pkt_alloc_with_buffer(context, len, AF_UNSPEC, 0, K_NO_WAIT);
+    pkt = net_pkt_alloc_with_buffer(context, len, AF_INET, IPPROTO_TCP, K_NO_WAIT);
     if (!pkt) {
         return -ENOMEM;  // Failed to allocate packet
     }
@@ -159,7 +158,7 @@ int zephyr_net_send(/*struct net_context*/void *context, const unsigned char *bu
     }
 
     /* Send the packet over the context (non-blocking send) */
-    ret = net_context_send(pxNet->xFd, pkt->buffer->data, pkt->buffer->len, my_send_cb, K_MSEC(5), NULL);
+    ret = net_context_send(&ctx, pkt->buffer->data, pkt->buffer->len, my_send_cb, K_MSEC(5), NULL);
     if (ret < 0) {
         net_pkt_unref(pkt);  // Free the packet on failure
         return ret;
@@ -173,26 +172,13 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
     int res = KVS_ERRNO_NONE;
     int retVal = 0;
 
-    // // Log out the pointers
-    // LOG_DBG("Root CA: %p", pcRootCA);
-    // LOG_DBG("Device Cert: %p", pcCert);
-    // LOG_DBG("Device Private Key: %p", pcPrivKey);
-
-    // /* Log out the certificates  */
-    // LOG_HEXDUMP_DBG(pcRootCA, strlen(pcRootCA), "Root CA");
-    // LOG_HEXDUMP_DBG(pcCert, strlen(pcCert), "Device Cert");
-    // LOG_HEXDUMP_DBG(pcPrivKey, strlen(pcPrivKey), "Device Private Key");
-    // LOG_DBG("Root CA:\n%s\n", pcRootCA);
-    // LOG_DBG("Device Cert:\n%s\n", pcCert);
-    // LOG_DBG("Device Private Key:\n%s\n", pcPrivKey);
-
     if (pxNet == NULL)
     {
         res = KVS_ERROR_INVALID_ARGUMENT;
     }
     else
     {
-        mbedtls_ssl_set_bio(&(pxNet->xSsl), &(pxNet->xFd), zephyr_net_send, NULL, zephyr_net_recv_timeout);
+        mbedtls_ssl_set_bio(&(pxNet->xSsl), &(pxNet->xFd), zephyr_net_send, zephyr_net_rcv, NULL);
 
         if ((retVal = mbedtls_ssl_config_defaults(&(pxNet->xConf), MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT)) != 0)
         {
@@ -271,7 +257,7 @@ static void connect_cb(struct net_context *context, int status,
 		       void *user_data)
 {
 	sa_family_t family = POINTER_TO_INT(user_data);
-
+  LOG_DBG("Connect callback called");
 	if (net_context_get_family(context) != family) {
 		// TC_ERROR("Connect family mismatch %d should be %d\n",
 		//        net_context_get_family(context), family);
@@ -334,7 +320,7 @@ NetIoHandle NetIo_create(void)
     if ((pxNet = (NetIo_t *)kvsMalloc(sizeof(NetIo_t))) != NULL)
     {
         memset(pxNet, 0, sizeof(NetIo_t));
-
+        pxNet->xFd = &ctx;
         //mbedtls_net_init(&(pxNet->xFd));
         int ret = net_context_get(AF_INET, SOCK_STREAM, IPPROTO_TCP, &(pxNet->xFd));
 
