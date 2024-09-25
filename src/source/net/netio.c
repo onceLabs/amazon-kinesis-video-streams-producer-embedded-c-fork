@@ -48,8 +48,7 @@ LOG_MODULE_REGISTER(netio, LOG_LEVEL_DBG);
 typedef struct NetIo 
 {
     /* Basic ssl connection parameters */
-    int32_t tcpSocket;
-    struct net_context *xFd;
+    int tcpSocket;
     mbedtls_ssl_context xSsl;
     mbedtls_ssl_config xConf;
     mbedtls_ctr_drbg_context xCtrDrbg;
@@ -65,8 +64,7 @@ typedef struct NetIo
     uint32_t uSendTimeoutMs;
 } NetIo_t;
 
-struct net_context ctx;
-NetIo_t *pxNet = NULL;
+NetIo_t *_pxNet = NULL;
 
 static int prvCreateX509Cert(NetIo_t *pxNet)
 {
@@ -146,8 +144,9 @@ int zephyr_net_rcv(void *ctx,unsigned char *buf,size_t len)
 /* Function to send data (equivalent to mbedtls_net_send) */
 int zephyr_net_send(void *ctx, const unsigned char *buf, size_t len)
 {
-  int socket = ( int ) ctx;
-  ssize_t sendStatus = zsock_send( socket, buf, len, 0 );
+  NetIo_t *net = ( NetIo_t *) ctx;
+  LOG_DBG("Sending data via socket %d, %d", net->tcpSocket, &(net->tcpSocket));
+  ssize_t sendStatus = zsock_send( net->tcpSocket, buf, len, 0 );
 
   return sendStatus;
 }
@@ -163,7 +162,7 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
     }
     else
     {
-        mbedtls_ssl_set_bio(&(pxNet->xSsl), &(pxNet->xFd), zephyr_net_send, zephyr_net_rcv, NULL);
+        mbedtls_ssl_set_bio(&(pxNet->xSsl), _pxNet, zephyr_net_send, zephyr_net_rcv, NULL);
 
         if ((retVal = mbedtls_ssl_config_defaults(&(pxNet->xConf), MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT)) != 0)
         {
@@ -256,19 +255,8 @@ static void connect_cb(struct net_context *context, int status,
 static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, const char *pcRootCA, const char *pcCert, const char *pcPrivKey)
 {
     int res = KVS_ERRNO_NONE;
-    int retVal = 0;
     int32_t mbedtlsError = 0;
-    char resolvedIpAddr[ INET6_ADDRSTRLEN ];
-    socklen_t addrInfoLength = ( socklen_t ) sizeof( struct sockaddr_in );
-
     SocketStatus_t returnStatus = SOCKETS_SUCCESS;
-    struct zsock_addrinfo * pListHead = NULL;
-
-    struct sockaddr_in addr = {
-		  .sin_family = AF_INET,
-		  .sin_port = htons(443),
-		  .sin_addr = { { { 3, 219, 160, 238 } } }
-	  };
 
     struct ServerInfo serverInfo ={
       .hostNameLength = strlen(pcHost),
@@ -287,15 +275,29 @@ static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, co
         LOG_ERR("Failed to init x509 (err:-%X)", -res);
     }
 
-    if ((returnStatus = Sockets_Connect(&pxNet->tcpSocket, &serverInfo, pxNet->uRecvTimeoutMs, pxNet->uSendTimeoutMs) != SOCKETS_SUCCESS))
+    if ((returnStatus = Sockets_Connect(&(pxNet->tcpSocket), &serverInfo, pxNet->uRecvTimeoutMs, pxNet->uSendTimeoutMs) != SOCKETS_SUCCESS))
     {
         LOG_ERR("Failed to connect to %s (err:-%d)", pcHost, returnStatus);
+    } else {
+        LOG_DBG("Successfully connected to %s", pcHost);
     }
     
     if ((res = prvInitConfig(pxNet, pcHost, pcRootCA, pcCert, pcPrivKey)) != KVS_ERRNO_NONE)
     {
         LOG_ERR("Failed to config ssl (err:-%X)", -res);
         /* Propagate the res error */
+    } else {
+        LOG_DBG("Successfully configured ssl");
+    }
+
+    if (( mbedtlsError = mbedtls_ssl_setup(&(pxNet->xSsl), &(pxNet->xConf)) ) != 0)
+    {
+        // LOG_ERR( ( "Failed to setup mbedTLS: mbedTLSError= %s : %s.",
+        //             mbedtlsHighLevelCodeOrDefault( mbedtlsError ),
+        //             mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
+        LOG_ERR("Failed to setup mbedTLS: mbedTLSError= %d", mbedtlsError);
+    } else {
+        LOG_DBG("Successfully setup mbedTLS");
     }
     
     /* Perform the TLS handshake. */
@@ -322,25 +324,25 @@ NetIoHandle NetIo_create(void)
 {
     //Log out the call
 
-    if ((pxNet = (NetIo_t *)kvsMalloc(sizeof(NetIo_t))) != NULL)
+    if ((_pxNet = (NetIo_t *)kvsMalloc(sizeof(NetIo_t))) != NULL)
     {
-        memset(pxNet, 0, sizeof(NetIo_t));
-        mbedtls_ssl_init(&(pxNet->xSsl));
-        mbedtls_ssl_config_init(&(pxNet->xConf));
-        mbedtls_ctr_drbg_init(&(pxNet->xCtrDrbg));
-        mbedtls_entropy_init(&(pxNet->xEntropy));
+        memset(_pxNet, 0, sizeof(NetIo_t));
+        mbedtls_ssl_init(&(_pxNet->xSsl));
+        mbedtls_ssl_config_init(&(_pxNet->xConf));
+        mbedtls_ctr_drbg_init(&(_pxNet->xCtrDrbg));
+        mbedtls_entropy_init(&(_pxNet->xEntropy));
 
-        pxNet->uRecvTimeoutMs = DEFAULT_CONNECTION_TIMEOUT_MS;
-        pxNet->uSendTimeoutMs = DEFAULT_CONNECTION_TIMEOUT_MS;
+        _pxNet->uRecvTimeoutMs = DEFAULT_CONNECTION_TIMEOUT_MS;
+        _pxNet->uSendTimeoutMs = DEFAULT_CONNECTION_TIMEOUT_MS;
 
-        if (mbedtls_ctr_drbg_seed(&(pxNet->xCtrDrbg), mbedtls_entropy_func, &(pxNet->xEntropy), NULL, 0) != 0)
+        if (mbedtls_ctr_drbg_seed(&(_pxNet->xCtrDrbg), mbedtls_entropy_func, &(_pxNet->xEntropy), NULL, 0) != 0)
         {
-            NetIo_terminate(pxNet);
-            pxNet = NULL;
+            NetIo_terminate(_pxNet);
+            _pxNet = NULL;
         }
     }
 
-    return pxNet;
+    return _pxNet;
 }
 
 void NetIo_terminate(NetIoHandle xNetIoHandle)
@@ -419,7 +421,7 @@ int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uB
      * when TCP socket is not ready to accept more data for
      * network transmission (possibly due to a full TX buffer). */
     do {
-      pollStatus = zsock_poll( &pollFds, 1, 0 );
+      pollStatus = zsock_poll( &pollFds, 1, 100 );
 
       if( pollStatus > 0 )
       {
@@ -483,6 +485,7 @@ int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uB
 
 int NetIo_recv(NetIoHandle xNetIoHandle, unsigned char *pBuffer, size_t uBufferSize, size_t *puBytesReceived)
 {
+    LOG_DBG("Receiving data");
     int n;
     int res = KVS_ERRNO_NONE;
     NetIo_t *pxNet = (NetIo_t *)xNetIoHandle;
@@ -523,14 +526,14 @@ bool NetIo_isDataAvailable(NetIoHandle xNetIoHandle)
 
     if (pxNet != NULL)
     {
-        if (k_fifo_is_empty(&(pxNet->xFd->recv_q)))
-        {
-            bDataAvailable = false;
-        }
-        else
-        {
-            bDataAvailable = true;
-        }
+        // if (k_fifo_is_empty(&(pxNet->xFd->recv_q)))
+        // {
+        //     bDataAvailable = false;
+        // }
+        // else
+        // {
+        //     bDataAvailable = true;
+        // }
         // fd = pxNet->xFd.fd;
         // if (fd >= 0)
         // {
