@@ -19,7 +19,7 @@
 
 #include <sys/time.h>
 #include <socket.h>
-
+#include <zephyr/net/socket.h>
 /* Third party headers */
 #include "azure_c_shared_utility/xlogging.h"
 #include <mbedtls/ctr_drbg.h>
@@ -39,6 +39,7 @@
 #include "net/netio.h"
 #include <zephyr/logging/log.h>
 #include "kvs/certs.h"
+#include <kvs/transport/sockets_zephyr.h>
 
 LOG_MODULE_REGISTER(netio, LOG_LEVEL_DBG);
 
@@ -47,7 +48,7 @@ LOG_MODULE_REGISTER(netio, LOG_LEVEL_DBG);
 typedef struct NetIo 
 {
     /* Basic ssl connection parameters */
-    //mbedtls_net_context xFd;Not supported on zephyr, have to switch to net_context
+    int32_t tcpSocket;
     struct net_context *xFd;
     mbedtls_ssl_context xSsl;
     mbedtls_ssl_config xConf;
@@ -134,37 +135,21 @@ void my_send_cb(struct net_context *context, int status, void *user_data)
     }
 }
 
-int zephyr_net_rcv(void *ctx,unsigned char *buf,size_t len){
-  return net_context_recv(ctx,my_recv_cb, K_FOREVER, NULL);
+int zephyr_net_rcv(void *ctx,unsigned char *buf,size_t len)
+{
+  int socket = ( int ) ctx;
+  ssize_t recvStatus = zsock_recv( socket, buf, len, 0 );
+
+  return recvStatus;
 }
 
 /* Function to send data (equivalent to mbedtls_net_send) */
-int zephyr_net_send(void *context, const unsigned char *buf, size_t len)
+int zephyr_net_send(void *ctx, const unsigned char *buf, size_t len)
 {
-    struct net_pkt *pkt;
-    int ret;
+  int socket = ( int ) ctx;
+  ssize_t sendStatus = zsock_send( socket, buf, len, 0 );
 
-    /* Allocate a network packet for the data */
-    pkt = net_pkt_alloc_with_buffer(context, len, AF_INET, IPPROTO_TCP, K_NO_WAIT);
-    if (!pkt) {
-        return -ENOMEM;  // Failed to allocate packet
-    }
-
-    /* Copy the data into the packet */
-    ret = net_pkt_write(pkt, buf, len);
-    if (ret < 0) {
-        net_pkt_unref(pkt);  // Free the packet on failure
-        return ret;
-    }
-
-    /* Send the packet over the context (non-blocking send) */
-    ret = net_context_send(&ctx, pkt->buffer->data, pkt->buffer->len, my_send_cb, K_MSEC(5), NULL);
-    if (ret < 0) {
-        net_pkt_unref(pkt);  // Free the packet on failure
-        return ret;
-    }
-
-    return 0;  // Success
+  return sendStatus;
 }
 
 static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootCA, const char *pcCert, const char *pcPrivKey)
@@ -272,6 +257,12 @@ static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, co
 {
     int res = KVS_ERRNO_NONE;
     int retVal = 0;
+    int32_t mbedtlsError = 0;
+    char resolvedIpAddr[ INET6_ADDRSTRLEN ];
+    socklen_t addrInfoLength = ( socklen_t ) sizeof( struct sockaddr_in );
+
+    SocketStatus_t returnStatus = SOCKETS_SUCCESS;
+    struct zsock_addrinfo * pListHead = NULL;
 
     struct sockaddr_in addr = {
 		  .sin_family = AF_INET,
@@ -279,35 +270,49 @@ static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, co
 		  .sin_addr = { { { 3, 219, 160, 238 } } }
 	  };
 
+    struct ServerInfo serverInfo ={
+      .hostNameLength = strlen(pcHost),
+      .pHostName = pcHost,
+      .port = 443
+    };
+
     if (pxNet == NULL || pcHost == NULL || pcPort == NULL)
     {
         res = KVS_ERROR_INVALID_ARGUMENT;
         LOG_ERR("Invalid argument");
     }
-    else if ((pcRootCA != NULL && pcCert != NULL && pcPrivKey != NULL) && (res = prvCreateX509Cert(pxNet)) != KVS_ERRNO_NONE)
+    
+    if ((pcRootCA != NULL && pcCert != NULL && pcPrivKey != NULL) && (res = prvCreateX509Cert(pxNet)) != KVS_ERRNO_NONE)
     {
         LOG_ERR("Failed to init x509 (err:-%X)", -res);
-        /* Propagate the res error */
     }
-    //else if ((retVal = mbedtls_net_connect(&(pxNet->xFd), pcHost, pcPort, MBEDTLS_NET_PROTO_TCP)) != 0)
-    else if ((retVal = net_context_connect(pxNet->xFd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in), connect_cb, K_MSEC(200), INT_TO_POINTER(AF_INET)) != 0))
+
+    if ((returnStatus = Sockets_Connect(&pxNet->tcpSocket, &serverInfo, pxNet->uRecvTimeoutMs, pxNet->uSendTimeoutMs) != SOCKETS_SUCCESS))
     {
-        res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
-        LOG_ERR("Failed to connect to %s (err:-%d)", pcHost, retVal);
+        LOG_ERR("Failed to connect to %s (err:-%d)", pcHost, returnStatus);
     }
-    else if ((res = prvInitConfig(pxNet, pcHost, pcRootCA, pcCert, pcPrivKey)) != KVS_ERRNO_NONE)
+    
+    if ((res = prvInitConfig(pxNet, pcHost, pcRootCA, pcCert, pcPrivKey)) != KVS_ERRNO_NONE)
     {
         LOG_ERR("Failed to config ssl (err:-%X)", -res);
         /* Propagate the res error */
     }
-    else if ((retVal = mbedtls_ssl_handshake(&(pxNet->xSsl))) != 0)
+    
+    /* Perform the TLS handshake. */
+    do
     {
-        res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
-        LOG_ERR("ssl handshake err (-%X)", -retVal);
-    }
-    else 
+      mbedtlsError = mbedtls_ssl_handshake( &( pxNet->xSsl ) );
+    } while( 
+      ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_READ ) ||
+      ( mbedtlsError == MBEDTLS_ERR_SSL_WANT_WRITE ) 
+    );
+
+    if( mbedtlsError != 0 )
     {
-        /* nop */
+        // LOG_ERR( ( "Failed to perform TLS handshake: mbedTLSError= %s : %s.",
+        //             mbedtlsHighLevelCodeOrDefault( mbedtlsError ),
+        //             mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
+        LOG_ERR("Failed to perform TLS handshake: mbedTLSError= %d", mbedtlsError);
     }
 
     return res;
@@ -320,15 +325,6 @@ NetIoHandle NetIo_create(void)
     if ((pxNet = (NetIo_t *)kvsMalloc(sizeof(NetIo_t))) != NULL)
     {
         memset(pxNet, 0, sizeof(NetIo_t));
-        pxNet->xFd = &ctx;
-        //mbedtls_net_init(&(pxNet->xFd));
-        int ret = net_context_get(AF_INET, SOCK_STREAM, IPPROTO_TCP, &(pxNet->xFd));
-
-        if (ret < 0) {
-            LOG_ERR("Failed to get context: %d", ret);
-            kvsFree(pxNet);
-            return NULL;
-        }
         mbedtls_ssl_init(&(pxNet->xSsl));
         mbedtls_ssl_config_init(&(pxNet->xConf));
         mbedtls_ctr_drbg_init(&(pxNet->xCtrDrbg));
@@ -355,8 +351,6 @@ void NetIo_terminate(NetIoHandle xNetIoHandle)
     {
         mbedtls_ctr_drbg_free(&(pxNet->xCtrDrbg));
         mbedtls_entropy_free(&(pxNet->xEntropy));
-        //mbedtls_net_free(&(pxNet->xFd));
-        net_context_put(pxNet->xFd);
         mbedtls_ssl_free(&(pxNet->xSsl));
         mbedtls_ssl_config_free(&(pxNet->xConf));
 
@@ -406,39 +400,85 @@ void NetIo_disconnect(NetIoHandle xNetIoHandle)
 
 int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uBytesToSend)
 {
-    int n = 0;
-    int res = KVS_ERRNO_NONE;
     NetIo_t *pxNet = (NetIo_t *)xNetIoHandle;
     size_t uBytesRemaining = uBytesToSend;
     char *pIndex = (char *)pBuffer;
 
-    if (pxNet == NULL || pBuffer == NULL)
-    {
-        res = KVS_ERROR_INVALID_ARGUMENT;
-    }
-    else
-    {
-        do
-        {
-            n = mbedtls_ssl_write(&(pxNet->xSsl), (const unsigned char *)pIndex, uBytesRemaining);
-            if (n < 0)
-            {
-                res = KVS_GENERATE_MBEDTLS_ERROR(n);
-                LogError("SSL send error -%X", -res);
-                break;
-            }
-            else if (n > uBytesRemaining)
-            {
-                res = KVS_ERROR_NETIO_SEND_MORE_THAN_REMAINING_DATA;
-                LogError("SSL send error -%X", -res);
-                break;
-            }
-            uBytesRemaining -= n;
-            pIndex += n;
-        } while (uBytesRemaining > 0);
-    }
+    int32_t tlsStatus = 0;
+    struct zsock_pollfd pollFds;
+    int32_t pollStatus;
 
-    return res;
+    /* Initialize the file descriptor. */
+    pollFds.events = ZSOCK_POLLOUT;
+    pollFds.revents = 0;
+    /* Set the file descriptor for poll. */
+    pollFds.fd = xNetIoHandle->tcpSocket;
+
+    /* `zsock_poll` checks if the socket is ready to send data.
+     * Note: This is done to avoid blocking on SSL_write()
+     * when TCP socket is not ready to accept more data for
+     * network transmission (possibly due to a full TX buffer). */
+    do {
+      pollStatus = zsock_poll( &pollFds, 1, 0 );
+
+      if( pollStatus > 0 )
+      {
+        tlsStatus = (uint32_t) mbedtls_ssl_write(&(pxNet->xSsl), (const unsigned char *)pIndex, uBytesRemaining);
+
+        if( 
+          ( tlsStatus == MBEDTLS_ERR_SSL_TIMEOUT ) ||
+          ( tlsStatus == MBEDTLS_ERR_SSL_WANT_READ ) ||
+          ( tlsStatus == MBEDTLS_ERR_SSL_WANT_WRITE ) 
+        ){
+          LOG_ERR("Failed to send data. However, send can be retried on this error");
+          break;
+        }
+        else if (tlsStatus < 0)
+        {
+          LOG_ERR("Failed to send data:  mbedTLSError= %d", tlsStatus);
+          break;
+        }
+        uBytesRemaining -= tlsStatus;
+        pIndex += tlsStatus;
+      } 
+      else if (pollStatus < 0) {
+        LOG_ERR("Failed to poll socket: %d", pollStatus);
+        tlsStatus = -1;
+      } 
+      else {
+        LOG_ERR("Socket not ready to send data");
+      }
+    } while (uBytesRemaining > 0);
+
+    return tlsStatus;
+
+    // if (pxNet == NULL || pBuffer == NULL)
+    // {
+    //     res = KVS_ERROR_INVALID_ARGUMENT;
+    // }
+    // else
+    // {
+    //     do
+    //     {
+    //         n = mbedtls_ssl_write(&(pxNet->xSsl), (const unsigned char *)pIndex, uBytesRemaining);
+    //         if (n < 0)
+    //         {
+    //             res = KVS_GENERATE_MBEDTLS_ERROR(n);
+    //             LogError("SSL send error -%X", -res);
+    //             break;
+    //         }
+    //         else if (n > uBytesRemaining)
+    //         {
+    //             res = KVS_ERROR_NETIO_SEND_MORE_THAN_REMAINING_DATA;
+    //             LogError("SSL send error -%X", -res);
+    //             break;
+    //         }
+    //         uBytesRemaining -= n;
+    //         pIndex += n;
+    //     } while (uBytesRemaining > 0);
+    // }
+
+    // return res;
 }
 
 int NetIo_recv(NetIoHandle xNetIoHandle, unsigned char *pBuffer, size_t uBufferSize, size_t *puBytesReceived)
