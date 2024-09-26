@@ -90,49 +90,6 @@ static int prvCreateX509Cert(NetIo_t *pxNet)
     return res;
 }
 
-/* Callback function that gets called when data is received */
-void my_recv_cb(
-  struct net_context *context, struct net_pkt *pkt,
-				      union net_ip_header *ip_hdr,
-				      union net_proto_header *proto_hdr,
-				      int status,
-				      void *user_data)
-{
-    if (pkt) {
-        // Data received, process packet here
-    } else if (status == -ETIMEDOUT) {
-        // Timeout occurred
-    }
-}
-
-/* Function that sets up receive with a timeout */
-int zephyr_net_recv_timeout(/*struct net_context*/void *context, unsigned char *buf, size_t len, uint32_t timeout_ms)
-{
-    int ret;
-
-    /* Convert timeout_ms to Zephyr timeout format */
-    k_timeout_t timeout = K_MSEC(timeout_ms);
-
-    /* Set up the receive callback with the specified timeout */
-    ret = net_context_recv(context, my_recv_cb, timeout, NULL);
-    if (ret < 0) {
-        // Handle error
-        return ret;
-    }
-
-    return 0; // Success
-}
-
-/* Callback function that gets called when data is sent */
-void my_send_cb(struct net_context *context, int status, void *user_data)
-{
-    if (status == 0) {
-        // Data sent successfully
-    } else {
-        // Handle error (e.g., connection closed, failure, etc.)
-    }
-}
-
 int zephyr_net_rcv(void *ctx,unsigned char *buf,size_t len)
 {
   int socket = ( int ) ctx;
@@ -315,6 +272,7 @@ static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, co
         //             mbedtlsHighLevelCodeOrDefault( mbedtlsError ),
         //             mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
         LOG_ERR("Failed to perform TLS handshake: mbedTLSError= %d", mbedtlsError);
+        return -1;
     }
 
     return res;
@@ -421,7 +379,7 @@ int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uB
      * when TCP socket is not ready to accept more data for
      * network transmission (possibly due to a full TX buffer). */
     do {
-      pollStatus = zsock_poll( &pollFds, 1, 100 );
+      pollStatus = zsock_poll( &pollFds, 1, 0 );
 
       if( pollStatus > 0 )
       {
@@ -492,27 +450,26 @@ int NetIo_recv(NetIoHandle xNetIoHandle, unsigned char *pBuffer, size_t uBufferS
 
     if (pxNet == NULL || pBuffer == NULL || puBytesReceived == NULL)
     {
-        res = KVS_ERROR_INVALID_ARGUMENT;
+      res = KVS_ERROR_INVALID_ARGUMENT;
     }
     else
     {
         n = mbedtls_ssl_read(&(pxNet->xSsl), pBuffer, uBufferSize);
         if (n < 0)
         {
-            res = KVS_GENERATE_MBEDTLS_ERROR(n);
-            LogError("SSL recv error -%X", -res);
+          res = KVS_GENERATE_MBEDTLS_ERROR(n);
+          LogError("SSL recv error -%X", -res);
         }
         else if (n > uBufferSize)
         {
-            res = KVS_ERROR_NETIO_RECV_MORE_THAN_AVAILABLE_SPACE;
-            LogError("SSL recv error -%X", -res);
+          res = KVS_ERROR_NETIO_RECV_MORE_THAN_AVAILABLE_SPACE;
+          LogError("SSL recv error -%X", -res);
         }
         else
         {
-            *puBytesReceived = n;
+          *puBytesReceived = n;
         }
     }
-
     return res;
 }
 
