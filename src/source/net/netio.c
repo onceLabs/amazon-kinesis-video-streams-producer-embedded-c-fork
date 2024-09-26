@@ -40,6 +40,7 @@
 #include <zephyr/logging/log.h>
 #include "kvs/certs.h"
 #include <kvs/transport/sockets_zephyr.h>
+#include <zephyr_mbedtls_priv.h>
 
 LOG_MODULE_REGISTER(netio, LOG_LEVEL_DBG);
 
@@ -101,9 +102,9 @@ int zephyr_net_rcv(void *ctx,unsigned char *buf,size_t len)
 /* Function to send data (equivalent to mbedtls_net_send) */
 int zephyr_net_send(void *ctx, const unsigned char *buf, size_t len)
 {
-  NetIo_t *net = ( NetIo_t *) ctx;
-  LOG_DBG("Sending data via socket %d, %d", net->tcpSocket, &(net->tcpSocket));
-  ssize_t sendStatus = zsock_send( net->tcpSocket, buf, len, 0 );
+  int socket = ( int ) ctx;
+  LOG_DBG("Sending data via socket %d", socket);
+  ssize_t sendStatus = zsock_send( socket, buf, len, 0 );
 
   return sendStatus;
 }
@@ -119,7 +120,7 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
     }
     else
     {
-        mbedtls_ssl_set_bio(&(pxNet->xSsl), _pxNet, zephyr_net_send, zephyr_net_rcv, NULL);
+        mbedtls_ssl_set_bio(&(pxNet->xSsl), ( void * )_pxNet->tcpSocket, zephyr_net_send, zephyr_net_rcv, NULL);
 
         if ((retVal = mbedtls_ssl_config_defaults(&(pxNet->xConf), MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT)) != 0)
         {
@@ -192,21 +193,6 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
 
     LOG_DBG("Init config done");
     return res;
-}
-
-static void connect_cb(struct net_context *context, int status,
-		       void *user_data)
-{
-	sa_family_t family = POINTER_TO_INT(user_data);
-  LOG_DBG("Connect callback called");
-	if (net_context_get_family(context) != family) {
-		// TC_ERROR("Connect family mismatch %d should be %d\n",
-		//        net_context_get_family(context), family);
-		// cb_failure = true;
-		return;
-	}
-
-	//cb_failure = false;
 }
 
 static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, const char *pcRootCA, const char *pcCert, const char *pcPrivKey)
@@ -289,7 +275,7 @@ NetIoHandle NetIo_create(void)
         mbedtls_ssl_config_init(&(_pxNet->xConf));
         mbedtls_ctr_drbg_init(&(_pxNet->xCtrDrbg));
         mbedtls_entropy_init(&(_pxNet->xEntropy));
-
+        mbedtls_ssl_conf_dbg(&(_pxNet->xConf), zephyr_mbedtls_debug, NULL);
         _pxNet->uRecvTimeoutMs = DEFAULT_CONNECTION_TIMEOUT_MS;
         _pxNet->uSendTimeoutMs = DEFAULT_CONNECTION_TIMEOUT_MS;
 
@@ -458,7 +444,7 @@ int NetIo_recv(NetIoHandle xNetIoHandle, unsigned char *pBuffer, size_t uBufferS
         if (n < 0)
         {
           res = KVS_GENERATE_MBEDTLS_ERROR(n);
-          LogError("SSL recv error -%X", -res);
+          LOG_ERR("SSL recv error -%X", -res);
         }
         else if (n > uBufferSize)
         {
