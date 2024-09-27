@@ -75,10 +75,19 @@ static int prvCreateX509Cert(NetIo_t *pxNet)
     {
         res = KVS_ERROR_INVALID_ARGUMENT;
     }
-    else if ((pxNet->pRootCA = (mbedtls_x509_crt *)kvsMalloc(sizeof(mbedtls_x509_crt))) == NULL ||
-        (pxNet->pCert = (mbedtls_x509_crt *)kvsMalloc(sizeof(mbedtls_x509_crt))) == NULL ||
-        (pxNet->pPrivKey = (mbedtls_pk_context *)kvsMalloc(sizeof(mbedtls_pk_context))) == NULL)
+    else if ((pxNet->pRootCA = (mbedtls_x509_crt *)k_malloc(sizeof(mbedtls_x509_crt))) == NULL )
     {
+        LOG_ERR("Failed to allocate memory ROOT for x509 cert");
+        res = KVS_ERROR_OUT_OF_MEMORY;
+    }
+    else if ((pxNet->pCert = (mbedtls_x509_crt *)k_malloc(sizeof(mbedtls_x509_crt))) == NULL)
+    {
+        LOG_ERR("Failed to allocate memory DEVICE for x509 cert");
+        res = KVS_ERROR_OUT_OF_MEMORY;
+    }
+    else if ((pxNet->pPrivKey = (mbedtls_pk_context *)k_malloc(sizeof(mbedtls_pk_context))) == NULL)
+    {
+        LOG_ERR("Failed to allocate memory PRIVATE for x509 cert");
         res = KVS_ERROR_OUT_OF_MEMORY;
     }
     else
@@ -216,6 +225,7 @@ static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, co
     if ((pcRootCA != NULL && pcCert != NULL && pcPrivKey != NULL) && (res = prvCreateX509Cert(pxNet)) != KVS_ERRNO_NONE)
     {
         LOG_ERR("Failed to init x509 (err:-%X)", -res);
+        return res;
     }
 
     if ((returnStatus = Sockets_Connect(&(pxNet->tcpSocket), &serverInfo, pxNet->uRecvTimeoutMs, pxNet->uSendTimeoutMs) != SOCKETS_SUCCESS))
@@ -268,7 +278,7 @@ NetIoHandle NetIo_create(void)
 {
     //Log out the call
 
-    if ((_pxNet = (NetIo_t *)kvsMalloc(sizeof(NetIo_t))) != NULL)
+    if ((_pxNet = (NetIo_t *)k_malloc(sizeof(NetIo_t))) != NULL)
     {
         memset(_pxNet, 0, sizeof(NetIo_t));
         mbedtls_ssl_init(&(_pxNet->xSsl));
@@ -326,7 +336,7 @@ void NetIo_terminate(NetIoHandle xNetIoHandle)
 
 int NetIo_connect(NetIoHandle xNetIoHandle, const char *pcHost, const char *pcPort)
 {
-    return prvConnect(xNetIoHandle, pcHost, pcPort, aws_root_ca, aws_device_cert, aws_private_key);
+    return prvConnect(xNetIoHandle, pcHost, pcPort, NULL, NULL, NULL);
 }
 
 int NetIo_connectWithX509(NetIoHandle xNetIoHandle, const char *pcHost, const char *pcPort, const char *pcRootCA, const char *pcCert, const char *pcPrivKey)
