@@ -17,6 +17,7 @@ set(ZEPHYR_MODUELS_DIR /opt/nordic/ncs/v2.7.0/modules)
 
 add_definitions(-DCONFIG_ARM)
 add_definitions(-DCONFIG_MP_MAX_NUM_CPUS=1)
+add_definitions(-DMBEDTLS_DEBUG_C)
 
 set(LIB_SRC
     ${GENERATED_HEADERS_DIR}/autoconf.h
@@ -30,6 +31,7 @@ set(LIB_SRC
     ${LIB_DIR}/include/kvs/port.h
     ${LIB_DIR}/include/kvs/restapi.h
     ${LIB_DIR}/include/kvs/stream.h
+    ${LIB_DIR}/include/kvs/certs.h
     ${LIB_DIR}/source/app/kvsapp.c
     ${LIB_DIR}/source/codec/nalu.c
     ${LIB_DIR}/source/codec/sps_decode.c
@@ -51,6 +53,7 @@ set(LIB_SRC
     ${LIB_DIR}/source/restful/iot/iot_credential_provider.c
     ${LIB_DIR}/source/restful/kvs/restapi_kvs.c
     ${LIB_DIR}/source/stream/stream.c
+    ${LIB_DIR}/source/transport/sockets_zephyr.c
     ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include/mbedtls/ctr_drbg.h
     ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include/mbedtls/entropy.h
 )

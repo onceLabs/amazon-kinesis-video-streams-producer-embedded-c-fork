@@ -30,57 +30,120 @@
 #include "net/http_helper.h"
 #include "net/netio.h"
 #include "net/http_parser_adapter.h"
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <zephyr/kernel.h>
 
 #define DEFAULT_HTTP_RECV_BUFSIZE 2048
 
-static int prvGenerateHttpReq(const char *pcHttpMethod, const char *pcUri, HTTP_HEADERS_HANDLE xHttpReqHeaders, const char *pcBody, STRING_HANDLE *pStringHandle)
+static void *k_realloc(void *ptr, size_t new_size) {
+    if (ptr == NULL) {
+        return k_malloc(new_size);
+    }
+
+    if (new_size == 0) {
+        k_free(ptr);
+        return NULL;
+    }
+
+    void *new_ptr = k_malloc(new_size);
+    if (new_ptr == NULL) {
+        return NULL;
+    }
+
+    // Copy the old data to the new block of memory
+    memcpy(new_ptr, ptr, new_size);
+    k_free(ptr);
+
+    return new_ptr;
+}
+
+static int prvGenerateHttpReq(const char *pcHttpMethod, const char *pcUri, HTTP_HEADERS_HANDLE xHttpReqHeaders, const char *pcBody, char **pStringHandle)
 {
     int res = KVS_ERRNO_NONE;
-    STRING_HANDLE xStHttpReq = NULL;
     size_t uHeadersCnt = 0;
     size_t i = 0;
     char *pcHeader = NULL;
+    size_t reqSize = 0;
+    char *xStHttpReq = NULL;
 
     if (HTTPHeaders_GetHeaderCount(xHttpReqHeaders, &uHeadersCnt) != HTTP_HEADERS_OK)
     {
         res = KVS_ERROR_UNABLE_TO_GET_HTTP_HEADER_COUNT;
     }
-    else if ((xStHttpReq = STRING_new()) == NULL || STRING_sprintf(xStHttpReq, "%s %s HTTP/1.1\r\n", pcHttpMethod, pcUri) != 0)
-    {
-        res = KVS_ERROR_C_UTIL_STRING_ERROR;
-    }
     else
     {
-        for (i = 0; i < uHeadersCnt && res == KVS_ERRNO_NONE; i++)
+        // Calculate initial size for the HTTP request string
+        reqSize = strlen(pcHttpMethod) + strlen(pcUri) + strlen(" HTTP/1.1\r\n") + 1;
+        xStHttpReq = (char *)k_malloc(reqSize);
+        
+        if (xStHttpReq == NULL)
         {
-            if (HTTPHeaders_GetHeader(xHttpReqHeaders, i, &pcHeader) != HTTP_HEADERS_OK)
+            res = KVS_ERROR_C_UTIL_STRING_ERROR;
+        }
+        else
+        {
+            // Format the initial HTTP request line
+            snprintf(xStHttpReq, reqSize, "%s %s HTTP/1.1\r\n", pcHttpMethod, pcUri);
+
+            for (i = 0; i < uHeadersCnt && res == KVS_ERRNO_NONE; i++)
             {
-                res = KVS_ERROR_UNABLE_TO_GET_HTTP_HEADER;
+                if (HTTPHeaders_GetHeader(xHttpReqHeaders, i, &pcHeader) != HTTP_HEADERS_OK)
+                {
+                    res = KVS_ERROR_UNABLE_TO_GET_HTTP_HEADER;
+                }
+                else
+                {
+                    size_t headerLen = strlen(pcHeader) + strlen("\r\n") + 1;
+                    reqSize += headerLen;
+
+                    // Reallocate memory for the growing request string
+                    char *newReq = (char *)k_realloc(xStHttpReq, reqSize);
+                    if (newReq == NULL)
+                    {
+                        res = KVS_ERROR_C_UTIL_STRING_ERROR;
+                        free(pcHeader);
+                        break;
+                    }
+
+                    xStHttpReq = newReq;
+                    strcat(xStHttpReq, pcHeader);
+                    strcat(xStHttpReq, "\r\n");
+
+                    /* pcHeader was created by HTTPHeaders_GetHeader via malloc */
+                    free(pcHeader);
+                }
             }
-            else
+
+            if (res == KVS_ERRNO_NONE)
             {
-                if (STRING_sprintf(xStHttpReq, "%s\r\n", pcHeader) != 0)
+                reqSize += strlen("\r\n") + 1;
+                char *newReq = (char *)k_realloc(xStHttpReq, reqSize);
+                if (newReq == NULL)
                 {
                     res = KVS_ERROR_C_UTIL_STRING_ERROR;
                 }
-                /* pcHeader was created by HTTPHeaders_GetHeader via malloc */
-                free(pcHeader);
-            }
-        }
+                else
+                {
+                    xStHttpReq = newReq;
+                    strcat(xStHttpReq, "\r\n");
 
-        if (res == KVS_ERRNO_NONE)
-        {
-            if (STRING_sprintf(xStHttpReq, "\r\n") != 0)
-            {
-                res = KVS_ERROR_C_UTIL_STRING_ERROR;
-            }
-            else if (strlen(pcBody) > 0 && STRING_sprintf(xStHttpReq, "%s", pcBody) != 0)
-            {
-                res = KVS_ERROR_C_UTIL_STRING_ERROR;
-            }
-            else
-            {
-                /* nop */
+                    if (strlen(pcBody) > 0)
+                    {
+                        reqSize += strlen(pcBody) + 1;
+                        newReq = (char *)k_realloc(xStHttpReq, reqSize);
+                        if (newReq == NULL)
+                        {
+                            res = KVS_ERROR_C_UTIL_STRING_ERROR;
+                        }
+                        else
+                        {
+                            xStHttpReq = newReq;
+                            strcat(xStHttpReq, pcBody);
+                        }
+                    }
+                }
             }
         }
     }
@@ -91,12 +154,77 @@ static int prvGenerateHttpReq(const char *pcHttpMethod, const char *pcUri, HTTP_
     }
     else
     {
-        STRING_delete(xStHttpReq);
+        k_free(xStHttpReq);
         xStHttpReq = NULL;
     }
 
     return res;
 }
+
+// static int prvGenerateHttpReq(const char *pcHttpMethod, const char *pcUri, HTTP_HEADERS_HANDLE xHttpReqHeaders, const char *pcBody, STRING_HANDLE *pStringHandle)
+// {
+//     int res = KVS_ERRNO_NONE;
+//     STRING_HANDLE xStHttpReq = NULL;
+//     size_t uHeadersCnt = 0;
+//     size_t i = 0;
+//     char *pcHeader = NULL;
+
+//     if (HTTPHeaders_GetHeaderCount(xHttpReqHeaders, &uHeadersCnt) != HTTP_HEADERS_OK)
+//     {
+//         res = KVS_ERROR_UNABLE_TO_GET_HTTP_HEADER_COUNT;
+//     }
+//     else if ((xStHttpReq = STRING_new()) == NULL || STRING_sprintf(xStHttpReq, "%s %s HTTP/1.1\r\n", pcHttpMethod, pcUri) != 0)
+//     {
+//         res = KVS_ERROR_C_UTIL_STRING_ERROR;
+//     }
+//     else
+//     {
+//         for (i = 0; i < uHeadersCnt && res == KVS_ERRNO_NONE; i++)
+//         {
+//             if (HTTPHeaders_GetHeader(xHttpReqHeaders, i, &pcHeader) != HTTP_HEADERS_OK)
+//             {
+//                 res = KVS_ERROR_UNABLE_TO_GET_HTTP_HEADER;
+//             }
+//             else
+//             {
+//                 if (STRING_sprintf(xStHttpReq, "%s\r\n", pcHeader) != 0)
+//                 {
+//                     res = KVS_ERROR_C_UTIL_STRING_ERROR;
+//                 }
+//                 /* pcHeader was created by HTTPHeaders_GetHeader via malloc */
+//                 free(pcHeader);
+//             }
+//         }
+
+//         if (res == KVS_ERRNO_NONE)
+//         {
+//             if (STRING_sprintf(xStHttpReq, "\r\n") != 0)
+//             {
+//                 res = KVS_ERROR_C_UTIL_STRING_ERROR;
+//             }
+//             else if (strlen(pcBody) > 0 && STRING_sprintf(xStHttpReq, "%s", pcBody) != 0)
+//             {
+//                 res = KVS_ERROR_C_UTIL_STRING_ERROR;
+//             }
+//             else
+//             {
+//                 /* nop */
+//             }
+//         }
+//     }
+
+//     if (res == KVS_ERRNO_NONE)
+//     {
+//         *pStringHandle = xStHttpReq;
+//     }
+//     else
+//     {
+//         STRING_delete(xStHttpReq);
+//         xStHttpReq = NULL;
+//     }
+
+//     return res;
+// }
 
 int Http_executeHttpReq(NetIoHandle xNetIoHandle, const char *pcHttpMethod, const char *pcUri, HTTP_HEADERS_HANDLE xHttpReqHeaders, const char *pcBody)
 {

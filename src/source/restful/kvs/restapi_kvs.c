@@ -748,10 +748,17 @@ int Kvs_describeStream(KvsServiceParameter_t *pServPara, KvsDescribeStreamParame
         res = KVS_ERROR_FAIL_TO_CREATE_NETIO_HANDLE;
         LogError("Failed to create NetIo handle");
     }
-    else if (
-        (res = NetIo_setRecvTimeout(xNetIoHandle, pServPara->uRecvTimeoutMs)) != KVS_ERRNO_NONE ||
-        (res = NetIo_setSendTimeout(xNetIoHandle, pServPara->uSendTimeoutMs)) != KVS_ERRNO_NONE ||
-        (res = NetIo_connect(xNetIoHandle, pServPara->pcHost, PORT_HTTPS)) != KVS_ERRNO_NONE)
+    // else if ((res = NetIo_setRecvTimeout(xNetIoHandle, pServPara->uRecvTimeoutMs)) != KVS_ERRNO_NONE)
+    // {
+    //     LogError("Failed to connect to %s", pServPara->pcHost);
+    //     /* Propagate the res error */
+    // }
+    // else if ((res = NetIo_setSendTimeout(xNetIoHandle, pServPara->uSendTimeoutMs)) != KVS_ERRNO_NONE)
+    // {
+    //     LogError("Failed to connect to %s", pServPara->pcHost);
+    //     /* Propagate the res error */
+    // }
+    else if ((res = NetIo_connect(xNetIoHandle, pServPara->pcHost, PORT_HTTPS)) != KVS_ERRNO_NONE)
     {
         LogError("Failed to connect to %s", pServPara->pcHost);
         /* Propagate the res error */

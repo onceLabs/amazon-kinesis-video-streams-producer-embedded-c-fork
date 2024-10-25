@@ -16,3 +16,4 @@ libraries/amazon/amazon-kinesis-video-streams-webrtc-sdk-c/webrtc
 # Ignore IDE related
 .idea
 .vscode
+certs.h
