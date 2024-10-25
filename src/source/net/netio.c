@@ -38,7 +38,6 @@
 #include "os/allocator.h"
 #include "net/netio.h"
 #include <zephyr/logging/log.h>
-#include "kvs/certs.h"
 #include <kvs/transport/sockets_zephyr.h>
 #include <zephyr_mbedtls_priv.h>
 
@@ -228,7 +227,6 @@ static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, co
         LOG_ERR("Failed to init x509 (err:-%X)", -res);
         return res;
     }
-
     if ((returnStatus = Sockets_Connect(&(pxNet->tcpSocket), &serverInfo, pxNet->uRecvTimeoutMs, pxNet->uSendTimeoutMs) != SOCKETS_SUCCESS))
     {
       LOG_ERR("Failed to connect to %s (err:-%d)", pcHost, returnStatus);
