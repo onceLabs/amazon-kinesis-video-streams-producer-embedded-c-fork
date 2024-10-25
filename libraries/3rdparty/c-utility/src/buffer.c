@@ -18,7 +18,7 @@ typedef struct BUFFER_TAG
 /* Codes_SRS_BUFFER_07_001: [BUFFER_new shall allocate a BUFFER_HANDLE that will contain a NULL unsigned char*.] */
 BUFFER_HANDLE BUFFER_new(void)
 {
-    BUFFER* temp = (BUFFER*)calloc(1, sizeof(BUFFER));
+    BUFFER* temp = (BUFFER*)k_calloc(1, sizeof(BUFFER));
     /* Codes_SRS_BUFFER_07_002: [BUFFER_new shall return NULL on any error that occurs.] */
     if (temp != NULL)
     {

@@ -27,7 +27,7 @@
 
 /* Headers that needs to be signed in AWS signer V4 */
 #define HDR_CONNECTION                  "connection"
-#define HDR_HOST                        "host"
+#define HDR_HOST                        "Host"
 #define HDR_TRANSFER_ENCODING           "transfer-encoding"
 #define HDR_USER_AGENT                  "user-agent"
 #define HDR_X_AMZ_DATE                  "x-amz-date"
