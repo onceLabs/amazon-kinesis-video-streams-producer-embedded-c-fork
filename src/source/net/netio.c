@@ -38,7 +38,6 @@
 #include "os/allocator.h"
 #include "net/netio.h"
 #include <zephyr/logging/log.h>
-#include "kvs/certs.h"
 #include <kvs/transport/sockets_zephyr.h>
 #include <zephyr_mbedtls_priv.h>
 
