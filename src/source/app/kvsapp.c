@@ -32,6 +32,9 @@
 #include "kvs/kvsapp.h"
 #include "kvs/kvsapp_options.h"
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
+
+LOG_MODULE_REGISTER(kvsapp, LOG_LEVEL_DBG);
 
 /* Internal headers */
 #include "os/allocator.h"
@@ -46,6 +49,48 @@
 #define DEFAULT_RING_BUFFER_MEM_LIMIT (1 * 1024 * 1024)
 
 struct k_mutex wrapper_mutex;
+
+/*Codes_SRS_CRT_ABSTRACTIONS_99_038: [mallocAndstrcpy_s shall allocate memory for destination buffer to fit the string in the source parameter.]*/
+static int k_mallocAndStrcpy_s(char** destination, const char* source)
+{
+    int result;
+    int copied_result;
+    /*Codes_SRS_CRT_ABSTRACTIONS_99_036: [destination parameter or source parameter is NULL, the error code returned shall be EINVAL and destination shall not be modified.]*/
+    if ((destination == NULL) || (source == NULL))
+    {
+        /*If strDestination or strSource is a NULL pointer[...]these functions return EINVAL */
+        result = EINVAL;
+    }
+    else
+    {
+        size_t l = strlen(source);
+        char* temp = (char*)k_malloc(l + 1);
+
+        /*Codes_SRS_CRT_ABSTRACTIONS_99_037: [Upon failure to allocate memory for the destination, the function will return ENOMEM.]*/
+        if (temp == NULL)
+        {
+            result = ENOMEM;
+        }
+        else
+        {
+            *destination = temp;
+            /*Codes_SRS_CRT_ABSTRACTIONS_99_039: [mallocAndstrcpy_s shall copy the contents in the address source, including the terminating null character into location specified by the destination pointer after the memory allocation.]*/
+            copied_result = strcpy_s(*destination, l + 1, source);
+            if (copied_result < 0) /*strcpy_s error*/
+            {
+                k_free(*destination);
+                *destination = NULL;
+                result = copied_result;
+            }
+            else
+            {
+                /*Codes_SRS_CRT_ABSTRACTIONS_99_035: [mallocAndstrcpy_s shall return Zero upon success]*/
+                result = 0;
+            }
+        }
+    }
+    return result;
+}
 
 /**
  * Default implementation of OnDataFrameTerminateCallback_t. It calls free() to pData to release resource.
@@ -145,7 +190,7 @@ static int prvMallocAndStrcpyHelper(char **destination, const char *source)
             kvsFree(*destination);
             *destination = NULL;
         }
-        if (mallocAndStrcpy_s(destination, source) != 0)
+        if (k_mallocAndStrcpy_s(destination, source) != 0)
         {
             res = KVS_ERROR_OUT_OF_MEMORY;
         }
@@ -376,9 +421,10 @@ static void updateIotCredential(KvsApp_t *pKvs)
 
     if (isIotCertAvailable(pKvs))
     {
+        LOG_DBG("Updating Iot credential"); 
         Iot_credentialTerminate(pKvs->pToken);
         pKvs->pToken = NULL;
-
+        LOG_DBG("Iot credential terminated");
         if ((pToken = Iot_getCredential(&xIotCredentialReq)) == NULL)
         {
             LogError("Failed to get Iot credential");
@@ -1084,6 +1130,7 @@ int KvsApp_setoption(KvsAppHandle handle, const char *pcOptionName, const char *
             if ((res = prvMallocAndStrcpyHelper(&(pKvs->pIotX509PrivateKey), pValue)) != 0)
             {
                 LogError("Failed to set pIotX509PrivateKey");
+                LOG_ERR("Failed to set pIotX509PrivateKey %d", res);
                 /* Propagate the res error */
             }
         }
@@ -1236,6 +1283,7 @@ int KvsApp_open(KvsAppHandle handle)
     else
     {
         updateIotCredential(pKvs);
+        LOG_DBG("updateIotCredential done");
         if ((res = updateAndVerifyRestfulReqParameters(pKvs)) != KVS_ERRNO_NONE)
         {
             LogError("Failed to setup KVS");

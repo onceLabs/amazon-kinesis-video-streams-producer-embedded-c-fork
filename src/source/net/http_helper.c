@@ -34,6 +34,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
+
+LOG_MODULE_REGISTER(http_helper, LOG_LEVEL_DBG);
 
 #define DEFAULT_HTTP_RECV_BUFSIZE 2048
 
@@ -68,14 +71,17 @@ static int prvGenerateHttpReq(const char *pcHttpMethod, const char *pcUri, HTTP_
     size_t reqSize = 0;
     char *xStHttpReq = NULL;
 
+    LOG_DBG("Generating HTTP request");
+
     if (HTTPHeaders_GetHeaderCount(xHttpReqHeaders, &uHeadersCnt) != HTTP_HEADERS_OK)
     {
         res = KVS_ERROR_UNABLE_TO_GET_HTTP_HEADER_COUNT;
     }
     else
     {
-        // Calculate initial size for the HTTP request string
-        reqSize = strlen(pcHttpMethod) + strlen(pcUri) + strlen(" HTTP/1.1\r\n") + 1;
+        // Calculate initial size for the HTTP request string (method + URI + HTTP version + CRLF + CRLF)
+        //reqSize = strlen(pcHttpMethod) + strlen(pcUri) + strlen(" HTTP/1.1\r\n\r\n") + 1;
+        reqSize = strlen(pcHttpMethod) + strlen(pcUri) + strlen(" HTTP/1.1\r\n") + 2;
         xStHttpReq = (char *)k_malloc(reqSize);
         
         if (xStHttpReq == NULL)
@@ -86,6 +92,7 @@ static int prvGenerateHttpReq(const char *pcHttpMethod, const char *pcUri, HTTP_
         {
             // Format the initial HTTP request line
             snprintf(xStHttpReq, reqSize, "%s %s HTTP/1.1\r\n", pcHttpMethod, pcUri);
+            LOG_DBG("Initial HTTP request line: %s", xStHttpReq);
 
             for (i = 0; i < uHeadersCnt && res == KVS_ERRNO_NONE; i++)
             {
@@ -118,7 +125,7 @@ static int prvGenerateHttpReq(const char *pcHttpMethod, const char *pcUri, HTTP_
 
             if (res == KVS_ERRNO_NONE)
             {
-                reqSize += strlen("\r\n") + 1;
+                reqSize += strlen("\r\n") + 2;
                 char *newReq = (char *)k_realloc(xStHttpReq, reqSize);
                 if (newReq == NULL)
                 {
@@ -150,10 +157,15 @@ static int prvGenerateHttpReq(const char *pcHttpMethod, const char *pcUri, HTTP_
 
     if (res == KVS_ERRNO_NONE)
     {
-        *pStringHandle = xStHttpReq;
+      // Print out the generated HTTP request
+      LOG_DBG("Generated HTTP request");
+      LOG_DBG("\r\n%s", xStHttpReq);
+      //LOG_HEXDUMP_DBG(xStHttpReq, strlen(xStHttpReq), "HTTP Request");
+      *pStringHandle = xStHttpReq;
     }
     else
     {
+      LOG_ERR("Failed to generate HTTP request");
         k_free(xStHttpReq);
         xStHttpReq = NULL;
     }
@@ -229,7 +241,11 @@ static int prvGenerateHttpReq(const char *pcHttpMethod, const char *pcUri, HTTP_
 int Http_executeHttpReq(NetIoHandle xNetIoHandle, const char *pcHttpMethod, const char *pcUri, HTTP_HEADERS_HANDLE xHttpReqHeaders, const char *pcBody)
 {
     int res = KVS_ERRNO_NONE;
-    STRING_HANDLE xStHttpReq = NULL;
+    char *xStHttpReq = NULL;
+    const char *test_uri = "/role-aliases/KvsCameraIoTRoleAlias/credentials";
+
+    // Log the pcuri
+    LOG_DBG("HTTP request URI: %s", pcUri);
 
     if (xNetIoHandle == NULL || pcHttpMethod == NULL || pcUri == NULL || xHttpReqHeaders == NULL || pcBody == NULL)
     {
@@ -239,16 +255,18 @@ int Http_executeHttpReq(NetIoHandle xNetIoHandle, const char *pcHttpMethod, cons
     {
         /* Propagate the res error */
     }
-    else if ((res = NetIo_send(xNetIoHandle, (const unsigned char *)STRING_c_str(xStHttpReq), STRING_length(xStHttpReq))) != KVS_ERRNO_NONE)
+    else if ((res = NetIo_send(xNetIoHandle, (const unsigned char *)xStHttpReq,  strlen(xStHttpReq))) != KVS_ERRNO_NONE)
     {
-        /* Propagate the res error */
+      LOG_ERR("Failed to send HTTP request with error %d", res);
+      /* Propagate the res error */
     }
     else
     {
         /* nop */
     }
 
-    STRING_delete(xStHttpReq);
+    k_free(xStHttpReq);
+    //STRING_delete(xStHttpReq);
 
     return res;
 }

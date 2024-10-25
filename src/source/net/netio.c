@@ -219,6 +219,7 @@ static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, co
     {
         res = KVS_ERROR_INVALID_ARGUMENT;
         LOG_ERR("Invalid argument");
+        return -1;
     }
     
     if ((pcRootCA != NULL && pcCert != NULL && pcPrivKey != NULL) && (res = prvCreateX509Cert(pxNet)) != KVS_ERRNO_NONE)
@@ -228,28 +229,28 @@ static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, co
     }
     if ((returnStatus = Sockets_Connect(&(pxNet->tcpSocket), &serverInfo, pxNet->uRecvTimeoutMs, pxNet->uSendTimeoutMs) != SOCKETS_SUCCESS))
     {
-        LOG_ERR("Failed to connect to %s (err:-%d)", pcHost, returnStatus);
+      LOG_ERR("Failed to connect to %s (err:-%d)", pcHost, returnStatus);
+      return -1;
     } else {
-        LOG_DBG("Successfully connected to %s", pcHost);
+      LOG_DBG("Successfully connected to %s", pcHost);
     }
     
     if ((res = prvInitConfig(pxNet, pcHost, pcRootCA, pcCert, pcPrivKey)) != KVS_ERRNO_NONE)
     {
-        LOG_ERR("Failed to config ssl (err:-%X)", -res);
-        /* Propagate the res error */
+      LOG_ERR("Failed to config ssl (err:-%X)", -res);
+      /* Propagate the res error */
+      return -1;
     } else {
-        LOG_DBG("Successfully configured ssl");
+      LOG_DBG("Successfully configured ssl");
     }
 
-    if (( mbedtlsError = mbedtls_ssl_setup(&(pxNet->xSsl), &(pxNet->xConf)) ) != 0)
-    {
-        // LOG_ERR( ( "Failed to setup mbedTLS: mbedTLSError= %s : %s.",
-        //             mbedtlsHighLevelCodeOrDefault( mbedtlsError ),
-        //             mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
-        LOG_ERR("Failed to setup mbedTLS: mbedTLSError= %d", mbedtlsError);
-    } else {
-        LOG_DBG("Successfully setup mbedTLS");
-    }
+    // if (( mbedtlsError = mbedtls_ssl_setup(&(pxNet->xSsl), &(pxNet->xConf)) ) != 0)
+    // {
+    //   LOG_ERR("Failed to setup mbedTLS: mbedTLSError= %d", mbedtlsError);
+    //   return -1;
+    // } else {
+    //   LOG_DBG("Successfully setup mbedTLS");
+    // }
     
     /* Perform the TLS handshake. */
     do
@@ -262,9 +263,6 @@ static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, co
 
     if( mbedtlsError != 0 )
     {
-        // LOG_ERR( ( "Failed to perform TLS handshake: mbedTLSError= %s : %s.",
-        //             mbedtlsHighLevelCodeOrDefault( mbedtlsError ),
-        //             mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
         LOG_ERR("Failed to perform TLS handshake: mbedTLSError= %d", mbedtlsError);
         return -1;
     }
@@ -354,6 +352,7 @@ void NetIo_disconnect(NetIoHandle xNetIoHandle)
 
 int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uBytesToSend)
 {
+    int res = 0;
     NetIo_t *pxNet = (NetIo_t *)xNetIoHandle;
     size_t uBytesRemaining = uBytesToSend;
     char *pIndex = (char *)pBuffer;
@@ -377,8 +376,10 @@ int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uB
 
       if( pollStatus > 0 )
       {
+        LOG_DBG("Sending data: bytesRemaining= %d", uBytesRemaining);
+        // Log data that is being sent
+        LOG_HEXDUMP_DBG(pIndex, uBytesRemaining, "Data being sent");
         tlsStatus = (uint32_t) mbedtls_ssl_write(&(pxNet->xSsl), (const unsigned char *)pIndex, uBytesRemaining);
-
         if( 
           ( tlsStatus == MBEDTLS_ERR_SSL_TIMEOUT ) ||
           ( tlsStatus == MBEDTLS_ERR_SSL_WANT_READ ) ||
@@ -389,6 +390,7 @@ int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uB
         }
         else if (tlsStatus < 0)
         {
+          res = KVS_GENERATE_MBEDTLS_ERROR(tlsStatus);
           LOG_ERR("Failed to send data:  mbedTLSError= %d", tlsStatus);
           break;
         }
@@ -396,15 +398,15 @@ int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uB
         pIndex += tlsStatus;
       } 
       else if (pollStatus < 0) {
+        res = -1;
         LOG_ERR("Failed to poll socket: %d", pollStatus);
-        tlsStatus = -1;
       } 
       else {
         LOG_ERR("Socket not ready to send data");
       }
     } while (uBytesRemaining > 0);
 
-    return tlsStatus;
+    return res;
 
     // if (pxNet == NULL || pBuffer == NULL)
     // {
