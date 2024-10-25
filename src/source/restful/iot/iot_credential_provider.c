@@ -258,17 +258,3 @@ void Iot_credentialTerminate(IotCredentialToken_t *pToken)
         kvsFree(pToken);
     }
 }
-
-
-// GET /role-aliases/KvsCameraIoTRoleAlias/credentials HTTP/1.1
-// host: c1ey7qrrfmprzp.credentials.iot.us-east-1.amazonaws.com
-// accept: */*
-// x-amzn-iot-thingname: kvs_camera_stream
-
-// GET /role-aliases/KvsCameraIoTRoleAlias/credentials HTTP/1.1
-// Host: c1ey7qrrfmprzp.credentials.iot.us-east-1.amazonaws.com
-// Accept: */*
-// x-amzn-iot-thingname:kvs_camera_stream
-
-
-//curl --verbose -H "x-amzn-iot-thingname:kvs_camera_stream" --cert certificate.pem --key private.pem.key https://c1ey7qrrfmprzp.credentials.iot.us-east-1.amazonaws.com/role-aliases/KvsCameraIoTRoleAlias/credentials --cacert ./cacert.pem > token.json

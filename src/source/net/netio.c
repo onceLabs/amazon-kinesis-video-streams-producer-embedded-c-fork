@@ -270,8 +270,6 @@ static int prvConnect(NetIo_t *pxNet, const char *pcHost, const char *pcPort, co
     return res;
 }
 
-//https://c1ey7qrrfmprzp.credentials.iot.us-east-1.amazonaws.com/role-aliases/KvsCameraIoTRoleAlias/credentials
-
 NetIoHandle NetIo_create(void)
 {
     //Log out the call
