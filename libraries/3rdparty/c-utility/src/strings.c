@@ -13,6 +13,28 @@
 
 static const char hexToASCII[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
+static void *k_realloc(void *ptr, size_t new_size) {
+    if (ptr == NULL) {
+        return k_malloc(new_size);
+    }
+
+    if (new_size == 0) {
+        k_free(ptr);
+        return NULL;
+    }
+
+    void *new_ptr = k_malloc(new_size);
+    if (new_ptr == NULL) {
+        return NULL;
+    }
+
+    // Copy the old data to the new block of memory
+    memcpy(new_ptr, ptr, new_size);
+    k_free(ptr);
+
+    return new_ptr;
+}
+
 typedef struct STRING_TAG
 {
     char* s;
@@ -141,18 +163,18 @@ STRING_HANDLE STRING_construct_sprintf(const char* format, ...)
         va_end(arg_list);
         if (length > 0)
         {
-            result = (STRING*)malloc(sizeof(STRING));
+            result = (STRING*)k_malloc(sizeof(STRING));
             if (result != NULL)
             {
-                result->s = (char*)malloc(length+1);
+                result->s = (char*)k_malloc(length+1);
                 if (result->s != NULL)
                 {
                     va_start(arg_list, format);
                     if (vsnprintf(result->s, length+1, format, arg_list) < 0)
                     {
                         /* Codes_SRS_STRING_07_040: [If any error is encountered STRING_construct_sprintf shall return NULL.] */
-                        free(result->s);
-                        free(result);
+                        k_free(result->s);
+                        k_free(result);
                         result = NULL;
                         LogError("Failure: vsnprintf formatting failed.");
                     }
@@ -161,7 +183,7 @@ STRING_HANDLE STRING_construct_sprintf(const char* format, ...)
                 else
                 {
                     /* Codes_SRS_STRING_07_040: [If any error is encountered STRING_construct_sprintf shall return NULL.] */
-                    free(result);
+                    k_free(result);
                     result = NULL;
                     LogError("Failure: allocation sprintf value failed.");
                 }
@@ -378,7 +400,7 @@ int STRING_concat(STRING_HANDLE handle, const char* s2)
         STRING* s1 = (STRING*)handle;
         size_t s1Length = strlen(s1->s);
         size_t s2Length = strlen(s2);
-        char* temp = (char*)realloc(s1->s, s1Length + s2Length + 1);
+        char* temp = (char*)k_realloc(s1->s, s1Length + s2Length + 1);
         if (temp == NULL)
         {
             /* Codes_SRS_STRING_07_013: [STRING_concat shall return a nonzero number if an error is encountered.] */
@@ -415,7 +437,7 @@ int STRING_concat_with_STRING(STRING_HANDLE s1, STRING_HANDLE s2)
 
         size_t s1Length = strlen(dest->s);
         size_t s2Length = strlen(src->s);
-        char* temp = (char*)realloc(dest->s, s1Length + s2Length + 1);
+        char* temp = (char*)k_realloc(dest->s, s1Length + s2Length + 1);
         if (temp == NULL)
         {
             /* Codes_SRS_STRING_07_035: [String_Concat_with_STRING shall return a nonzero number if an error is encountered.] */
@@ -497,7 +519,7 @@ int STRING_copy_n(STRING_HANDLE handle, const char* s2, size_t n)
             s2Length = n;
         }
 
-        temp = (char*)realloc(s1->s, s2Length + 1);
+        temp = (char*)k_realloc(s1->s, s2Length + 1);
         if (temp == NULL)
         {
             LogError("Failure reallocating value.");
@@ -561,7 +583,7 @@ int STRING_sprintf(STRING_HANDLE handle, const char* format, ...)
             STRING* s1 = (STRING*)handle;
             char* temp;
             size_t s1Length = strlen(s1->s);
-            temp = (char*)realloc(s1->s, s1Length + s2Length + 1);
+            temp = (char*)k_realloc(s1->s, s1Length + s2Length + 1);
             if (temp != NULL)
             {
                 s1->s = temp;

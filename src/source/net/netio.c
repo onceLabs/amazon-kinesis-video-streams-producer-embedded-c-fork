@@ -111,7 +111,7 @@ int zephyr_net_rcv(void *ctx,unsigned char *buf,size_t len)
 int zephyr_net_send(void *ctx, const unsigned char *buf, size_t len)
 {
   int socket = ( int ) ctx;
-  LOG_DBG("Sending data via socket %d", socket);
+  LOG_DBG("Sending data via socket %d with len=%d", socket, len);
   ssize_t sendStatus = zsock_send( socket, buf, len, 0 );
 
   return sendStatus;

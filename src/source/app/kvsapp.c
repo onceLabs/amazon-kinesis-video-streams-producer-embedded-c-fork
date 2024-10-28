@@ -502,7 +502,8 @@ static int setupDataEndpoint(KvsApp_t *pKvs)
         }
         else
         {
-            LogInfo("Try to describe stream");
+            k_msleep(5000);
+            LogInfo("Try to describe stream %s", pKvs->xDescPara.pcStreamName);
             if ((res = Kvs_describeStream(&(pKvs->xServicePara), &(pKvs->xDescPara), &uHttpStatusCode)) != KVS_ERRNO_NONE)
             {
                 LogError("Unable to describe stream");
