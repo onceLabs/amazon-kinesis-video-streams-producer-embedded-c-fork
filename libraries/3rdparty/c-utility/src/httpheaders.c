@@ -17,11 +17,34 @@ typedef struct HTTP_HEADERS_HANDLE_DATA_TAG
     MAP_HANDLE headers;
 } HTTP_HEADERS_HANDLE_DATA;
 
+
+static void *k_realloc(void *ptr, size_t new_size) {
+    if (ptr == NULL) {
+        return k_malloc(new_size);
+    }
+
+    if (new_size == 0) {
+        k_free(ptr);
+        return NULL;
+    }
+
+    void *new_ptr = k_malloc(new_size);
+    if (new_ptr == NULL) {
+        return NULL;
+    }
+
+    // Copy the old data to the new block of memory
+    memcpy(new_ptr, ptr, new_size);
+    k_free(ptr);
+
+    return new_ptr;
+}
+
 HTTP_HEADERS_HANDLE HTTPHeaders_Alloc(void)
 {
     /*Codes_SRS_HTTP_HEADERS_99_002:[ This API shall produce a HTTP_HANDLE that can later be used in subsequent calls to the module.]*/
     HTTP_HEADERS_HANDLE_DATA* result;
-    result = (HTTP_HEADERS_HANDLE_DATA*)malloc(sizeof(HTTP_HEADERS_HANDLE_DATA));
+    result = (HTTP_HEADERS_HANDLE_DATA*)k_malloc(sizeof(HTTP_HEADERS_HANDLE_DATA));
 
     if (result == NULL)
     {
@@ -34,7 +57,7 @@ HTTP_HEADERS_HANDLE HTTPHeaders_Alloc(void)
         if (result->headers == NULL)
         {
             LogError("Map_Create failed");
-            free(result);
+            k_free(result);
             result = NULL;
         }
         else
@@ -61,7 +84,7 @@ void HTTPHeaders_Free(HTTP_HEADERS_HANDLE handle)
         HTTP_HEADERS_HANDLE_DATA* handleData = (HTTP_HEADERS_HANDLE_DATA*)handle;
 
         Map_Destroy(handleData->headers);
-        free(handleData);
+        k_free(handleData);
     }
 }
 
@@ -113,7 +136,7 @@ static HTTP_HEADERS_RESULT headers_ReplaceHeaderNameValuePair(HTTP_HEADERS_HANDL
             {
                 size_t existingValueLen = strlen(existingValue);
                 size_t valueLen = strlen(value);
-                char* newValue = (char*)malloc(sizeof(char) * (existingValueLen + /*COMMA_AND_SPACE_LENGTH*/ 2 + valueLen + /*EOL*/ 1));
+                char* newValue = (char*)k_malloc(sizeof(char) * (existingValueLen + /*COMMA_AND_SPACE_LENGTH*/ 2 + valueLen + /*EOL*/ 1));
                 if (newValue == NULL)
                 {
                     /*Codes_SRS_HTTP_HEADERS_99_015:[ The function shall return HTTP_HEADERS_ALLOC_FAILED when an internal request to allocate memory fails.]*/
@@ -142,7 +165,7 @@ static HTTP_HEADERS_RESULT headers_ReplaceHeaderNameValuePair(HTTP_HEADERS_HANDL
                         /*Codes_SRS_HTTP_HEADERS_99_013:[ The function shall return HTTP_HEADERS_OK when execution is successful.]*/
                         result = HTTP_HEADERS_OK;
                     }
-                    free(newValue);
+                    k_free(newValue);
                 }
             }
             else
