@@ -22,6 +22,9 @@
 #include "kvs/errors.h"
 #include <inttypes.h>
 
+#include "kvs/iot_credential_provider.h"
+#include "kvs/stream.h"
+
 typedef struct KvsApp *KvsAppHandle;
 
 /**
@@ -99,7 +102,8 @@ typedef struct DoWorkExParamter
  * @param[in] pcStreamName KVS stream name
  * @return KVS application handle
  */
-KvsAppHandle KvsApp_create(const char *pcHost, const char *pcRegion, const char *pcService, const char *pcStreamName);
+//.KvsAppHandle KvsApp_create(const char *pcHost, const char *pcRegion, const char *pcService, const char *pcStreamName);
+KvsAppHandle KvsApp_create(const char *pcHost, const char *pcRegion, const char *pcService, const char *pcStreamName, const char *secretKey, const char *accessKey);
 
 /**
  * Terminate a KVS application.
@@ -212,5 +216,87 @@ size_t KvsApp_getStreamMemStatTotal(KvsAppHandle handle);
  * @return 0 on success, non-zero value otherwise
  */
 int KvsApp_setOnMkvSentCallback(KvsAppHandle handle, OnMkvSentCallback_t onMkvSentCallback, void *pAppData);
+
+
+typedef struct PolicyRingBufferParameter
+{
+    size_t uMemLimit;
+} PolicyRingBufferParameter_t;
+
+typedef struct StreamStrategy
+{
+    KvsApp_streamPolicy_t xPolicy;
+    union
+    {
+        PolicyRingBufferParameter_t xRingBufferPara;
+    };
+} StreamStrategy_t;
+
+typedef struct OnMkvSentCallbackInfo
+{
+    OnMkvSentCallback_t onMkvSentCallback;
+    void *pAppData;
+} OnMkvSentCallbackInfo_t;
+
+typedef struct KvsApp
+{
+    //LOCK_HANDLE xLock;
+    struct k_mutex *xLockMutex;
+
+    char *pHost;
+    char *pRegion;
+    char *pService;
+    char *pStreamName;
+    char *pDataEndpoint;
+
+    /* AWS access key, access secret and session token */
+    char *pAwsAccessKeyId;
+    char *pAwsSecretAccessKey;
+    char *pAwsSessionToken;
+
+    /* Iot certificates */
+    char *pIotCredentialHost;
+    char *pIotRoleAlias;
+    char *pIotThingName;
+    char *pIotX509RootCa;
+    char *pIotX509Certificate;
+    char *pIotX509PrivateKey;
+    IotCredentialToken_t *pToken;
+
+    /* Restful request parameters */
+    KvsServiceParameter_t xServicePara;
+    KvsDescribeStreamParameter_t xDescPara;
+    KvsCreateStreamParameter_t xCreatePara;
+    KvsGetDataEndpointParameter_t xGetDataEpPara;
+    KvsPutMediaParameter_t xPutMediaPara;
+
+    unsigned int uDataRetentionInHours;
+
+    /* KVS streaming variables */
+    uint64_t uEarliestTimestamp;
+    StreamHandle xStreamHandle;
+    PutMediaHandle xPutMediaHandle;
+    bool isEbmlHeaderUpdated;
+    StreamStrategy_t xStrategy;
+
+    /* Track information */
+    VideoTrackInfo_t *pVideoTrackInfo;
+    uint8_t *pSps;
+    size_t uSpsLen;
+    uint8_t *pPps;
+    size_t uPpsLen;
+
+    bool isAudioTrackPresent;
+    AudioTrackInfo_t *pAudioTrackInfo;
+
+    /* Session scope callbacks */
+    OnMkvSentCallbackInfo_t onMkvSentCallbackInfo;
+} KvsApp_t;
+
+typedef struct DataFrameUserData
+{
+    DataFrameCallbacks_t xCallbacks;
+} DataFrameUserData_t;
+
 
 #endif /* KVSAPP_H */

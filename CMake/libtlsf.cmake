@@ -11,6 +11,7 @@ set(TLSF_INC
 
 # setup static library
 add_library(tlsf STATIC ${TLSF_SRC})
+target_compile_options(tlsf PUBLIC -mcpu=cortex-m33)
 target_include_directories(tlsf PUBLIC ${TLSF_INC})
 
 include(GNUInstallDirs)

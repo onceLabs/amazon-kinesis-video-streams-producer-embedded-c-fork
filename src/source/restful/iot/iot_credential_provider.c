@@ -32,11 +32,67 @@
 #include "misc/json_helper.h"
 #include "net/netio.h"
 
+#include <zephyr/data/json.h>
+
 #define IOT_URI_ROLE_ALIASES_BEGIN  "/role-aliases"
 #define IOT_URI_ROLE_ALIASES_END    "/credentials"
 
+struct iot_credentials_s {
+  char *accessKeyId;
+  char *secretAccessKey;
+  char *sessionToken;
+  char *expiration;
+};
+
+static const struct json_obj_descr iot_credentials_descr[] = {
+  JSON_OBJ_DESCR_PRIM(struct iot_credentials_s, accessKeyId, JSON_TOK_STRING),
+  JSON_OBJ_DESCR_PRIM(struct iot_credentials_s, secretAccessKey, JSON_TOK_STRING),
+  JSON_OBJ_DESCR_PRIM(struct iot_credentials_s, sessionToken, JSON_TOK_STRING),
+  JSON_OBJ_DESCR_PRIM(struct iot_credentials_s, expiration, JSON_TOK_STRING),
+};
+
+struct iot_credential_response_s {
+  struct iot_credentials_s credentials;
+};
+
+static const struct json_obj_descr iot_credential_response_descr[] = {
+  JSON_OBJ_DESCR_OBJECT(struct iot_credential_response_s, credentials, iot_credentials_descr),
+};
+
 static int parseIoTCredential(const char *pcJsonSrc, size_t uJsonSrcLen, IotCredentialToken_t *pToken)
 {
+    int err = 0;
+    struct iot_credential_response_s iot_credential_response;
+
+    err = 
+      json_obj_parse(
+        pcJsonSrc, 
+        uJsonSrcLen, 
+        iot_credential_response_descr, 
+        ARRAY_SIZE(iot_credential_response_descr), 
+        &iot_credential_response);
+
+    if (err > 0) {
+      // Log out the parsed values
+      LogInfo("\r\naccessKeyId: %s", iot_credential_response.credentials.accessKeyId);
+      LogInfo("\r\nsecretAccessKey: %s", iot_credential_response.credentials.secretAccessKey);
+      LogInfo("\r\nsessionToken: %s", iot_credential_response.credentials.sessionToken);
+
+      // Copy the parsed values to the token
+      pToken->pAccessKeyId = iot_credential_response.credentials.accessKeyId;
+      pToken->pSecretAccessKey = iot_credential_response.credentials.secretAccessKey;
+      pToken->pSessionToken = iot_credential_response.credentials.sessionToken;
+
+      return KVS_ERRNO_NONE;
+    } else {
+      return KVS_ERROR_FAIL_TO_PARSE_JSON_OF_IOT_CREDENTIAL;
+    }
+
+    // Logu out the pcJsonSrc, uJsonSrcLen, pToken
+    LogInfo("pcJsonSrc: %s", pcJsonSrc);
+    LogInfo("uJsonSrcLen: %d", uJsonSrcLen);
+    LogInfo("pToken: %s", pToken);
+
     int res = KVS_ERRNO_NONE;
     STRING_HANDLE xStJson = NULL;
     JSON_Value *pxRootValue = NULL;
@@ -91,6 +147,13 @@ IotCredentialToken_t *Iot_getCredential(IotCredentialRequest_t *pReq)
     size_t uRspBodyLen = 0;
 
     NetIoHandle xNetIoHandle = NULL;
+    // Log out the pCredentialHost, pRoleAlias, pThingName, pRootCA, pCertificate, pPrivateKey
+    LogInfo("pCredentialHost: %s", pReq->pCredentialHost);
+    LogInfo("pRoleAlias: %s", pReq->pRoleAlias);
+    LogInfo("pThingName: %s", pReq->pThingName);
+    LogInfo("pRootCA: %s", pReq->pRootCA);
+    LogInfo("pCertificate: %s", pReq->pCertificate);
+    LogInfo("pPrivateKey: %s", pReq->pPrivateKey);
 
     if (pReq == NULL || pReq->pCredentialHost == NULL || pReq->pRoleAlias == NULL || pReq->pThingName == NULL || pReq->pRootCA == NULL || pReq->pCertificate == NULL ||
         pReq->pPrivateKey == NULL)
@@ -123,7 +186,7 @@ IotCredentialToken_t *Iot_getCredential(IotCredentialRequest_t *pReq)
     }
     else if ((res = Http_executeHttpReq(xNetIoHandle, HTTP_METHOD_GET, STRING_c_str(xStUri), xHttpReqHeaders, HTTP_BODY_EMPTY)) != KVS_ERRNO_NONE)
     {
-        LogError("Failed send http request to %s", pReq->pCredentialHost);
+        LogError("Failed send http request to %s", res);
         /* Propagate the res error */
     }
     else if ((res = Http_recvHttpRsp(xNetIoHandle, &uHttpStatusCode, &pRspBody, &uRspBodyLen)) != KVS_ERRNO_NONE)

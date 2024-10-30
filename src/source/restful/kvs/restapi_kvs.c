@@ -16,7 +16,7 @@
 #include <ctype.h>
 #include <inttypes.h>
 #include <stddef.h>
-
+#include <zephyr/kernel.h>
 /* Thirdparty headers */
 #include "azure_c_shared_utility/buffer_.h"
 #include "azure_c_shared_utility/doublylinkedlist.h"
@@ -81,7 +81,8 @@ typedef struct
 
 typedef struct PutMedia
 {
-    LOCK_HANDLE xLock;
+    //LOCK_HANDLE xLock;
+    struct k_mutex_t *xLockMutex;
 
     NetIoHandle xNetIoHandle;
     DLIST_ENTRY xPendingFragmentAcks;
@@ -97,6 +98,7 @@ typedef struct PutMedia
 #define EVENT_TYPE_ERROR "\"ERROR\""
 #define EVENT_TYPE_IDLE "\"IDLE\""
 
+static struct k_mutex wrapper_mutex;
 /*-----------------------------------------------------------*/
 
 static int prvValidateServiceParameter(KvsServiceParameter_t *pServPara)
@@ -549,7 +551,7 @@ static void prvLogPendingFragmentAcks(PutMedia_t *pPutMedia)
     PDLIST_ENTRY pxListItem = NULL;
     FragmentAck_t *pFragmentAck = NULL;
 
-    if (pPutMedia != NULL && Lock(pPutMedia->xLock) == LOCK_OK)
+    if (pPutMedia != NULL && k_mutex_lock(pPutMedia->xLockMutex, K_FOREVER))//Lock(pPutMedia->xLock) == LOCK_OK)
     {
         pxListHead = &(pPutMedia->xPendingFragmentAcks);
         pxListItem = pxListHead->Flink;
@@ -561,7 +563,8 @@ static void prvLogPendingFragmentAcks(PutMedia_t *pPutMedia)
             pxListItem = pxListItem->Flink;
         }
 
-        Unlock(pPutMedia->xLock);
+        //Unlock(pPutMedia->xLock);
+        k_mutex_unlock(pPutMedia->xLockMutex);
     }
 }
 
@@ -583,7 +586,7 @@ static int prvPushFragmentAck(PutMedia_t *pPutMedia, FragmentAck_t *pFragmentAck
         memcpy(pFragmentAck, pFragmentAckSrc, sizeof(FragmentAck_t));
         DList_InitializeListHead(&(pFragmentAck->xAckEntry));
 
-        if (Lock(pPutMedia->xLock) != LOCK_OK)
+        if (k_mutex_lock(pPutMedia->xLockMutex, K_FOREVER))//Lock(pPutMedia->xLock) != LOCK_OK)
         {
             res = KVS_ERROR_LOCK_ERROR;
         }
@@ -591,7 +594,8 @@ static int prvPushFragmentAck(PutMedia_t *pPutMedia, FragmentAck_t *pFragmentAck
         {
             DList_InsertTailList(&(pPutMedia->xPendingFragmentAcks), &(pFragmentAck->xAckEntry));
 
-            Unlock(pPutMedia->xLock);
+            //Unlock(pPutMedia->xLock);
+            k_mutex_unlock(pPutMedia->xLockMutex);
         }
     }
 
@@ -618,9 +622,10 @@ static PutMedia_t *prvCreateDefaultPutMediaHandle()
     }
     else
     {
+        pPutMedia->xLockMutex = &wrapper_mutex;
         memset(pPutMedia, 0, sizeof(PutMedia_t));
 
-        if ((pPutMedia->xLock = Lock_Init()) == NULL)
+        if (k_mutex_init(pPutMedia->xLockMutex))//(pPutMedia->xLock = Lock_Init()) == NULL)
         {
             res = KVS_ERROR_LOCK_ERROR;
             LogError("Failed to initialize lock");
@@ -635,10 +640,10 @@ static PutMedia_t *prvCreateDefaultPutMediaHandle()
     {
         if (pPutMedia != NULL)
         {
-            if (pPutMedia->xLock != NULL)
-            {
-                Lock_Deinit(pPutMedia->xLock);
-            }
+            // if (pPutMedia->xLock != NULL)
+            // {
+            //     Lock_Deinit(pPutMedia->xLock);
+            // }
             kvsFree(pPutMedia);
             pPutMedia = NULL;
         }
@@ -654,7 +659,7 @@ static FragmentAck_t *prvReadFragmentAck(PutMedia_t *pPutMedia)
     PDLIST_ENTRY pxListItem = NULL;
     FragmentAck_t *pFragmentAck = NULL;
 
-    if (Lock(pPutMedia->xLock) == LOCK_OK)
+    if (k_mutex_lock(pPutMedia->xLockMutex, K_FOREVER))//Lock(pPutMedia->xLock) == LOCK_OK)
     {
         if (!DList_IsListEmpty(&(pPutMedia->xPendingFragmentAcks)))
         {
@@ -662,7 +667,8 @@ static FragmentAck_t *prvReadFragmentAck(PutMedia_t *pPutMedia)
             pxListItem = DList_RemoveHeadList(pxListHead);
             pFragmentAck = containingRecord(pxListItem, FragmentAck_t, xAckEntry);
         }
-        Unlock(pPutMedia->xLock);
+        //Unlock(pPutMedia->xLock);
+        k_mutex_unlock(pPutMedia->xLockMutex);
     }
 
     return pFragmentAck;
@@ -718,7 +724,7 @@ int Kvs_describeStream(KvsServiceParameter_t *pServPara, KvsDescribeStreamParame
         LogError("Failed to allocate HTTP body");
     }
     else if (
-        (xHttpReqHeaders = HTTPHeaders_Alloc()) == NULL ||
+        (xHttpReqHeaders = HTTPHeaders_Alloc()) == NULL ||   
         HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_HOST, pServPara->pcHost) != HTTP_HEADERS_OK ||
         HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_ACCEPT, VAL_ACCEPT_ANY) != HTTP_HEADERS_OK ||
         HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_CONTENT_LENGTH, STRING_c_str(xStContentLength)) != HTTP_HEADERS_OK ||
@@ -742,10 +748,17 @@ int Kvs_describeStream(KvsServiceParameter_t *pServPara, KvsDescribeStreamParame
         res = KVS_ERROR_FAIL_TO_CREATE_NETIO_HANDLE;
         LogError("Failed to create NetIo handle");
     }
-    else if (
-        (res = NetIo_setRecvTimeout(xNetIoHandle, pServPara->uRecvTimeoutMs)) != KVS_ERRNO_NONE ||
-        (res = NetIo_setSendTimeout(xNetIoHandle, pServPara->uSendTimeoutMs)) != KVS_ERRNO_NONE ||
-        (res = NetIo_connect(xNetIoHandle, pServPara->pcHost, PORT_HTTPS)) != KVS_ERRNO_NONE)
+    // else if ((res = NetIo_setRecvTimeout(xNetIoHandle, pServPara->uRecvTimeoutMs)) != KVS_ERRNO_NONE)
+    // {
+    //     LogError("Failed to connect to %s", pServPara->pcHost);
+    //     /* Propagate the res error */
+    // }
+    // else if ((res = NetIo_setSendTimeout(xNetIoHandle, pServPara->uSendTimeoutMs)) != KVS_ERRNO_NONE)
+    // {
+    //     LogError("Failed to connect to %s", pServPara->pcHost);
+    //     /* Propagate the res error */
+    // }
+    else if ((res = NetIo_connect(xNetIoHandle, pServPara->pcHost, PORT_HTTPS)) != KVS_ERRNO_NONE)
     {
         LogError("Failed to connect to %s", pServPara->pcHost);
         /* Propagate the res error */
@@ -1321,7 +1334,7 @@ void Kvs_putMediaFinish(PutMediaHandle xPutMediaHandle)
     if (pPutMedia != NULL)
     {
         prvFlushFragmentAck(pPutMedia);
-        Lock_Deinit(pPutMedia->xLock);
+        //Lock_Deinit(pPutMedia->xLock);
         if (pPutMedia->xNetIoHandle != NULL)
         {
             NetIo_disconnect(pPutMedia->xNetIoHandle);

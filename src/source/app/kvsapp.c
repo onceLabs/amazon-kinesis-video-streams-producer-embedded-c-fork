@@ -23,14 +23,18 @@
 
 /* KVS headers */
 #include "kvs/errors.h"
-#include "kvs/iot_credential_provider.h"
+// #include "kvs/iot_credential_provider.h"
 #include "kvs/nalu.h"
 #include "kvs/port.h"
 #include "kvs/restapi.h"
-#include "kvs/stream.h"
+// #include "kvs/stream.h"
 
 #include "kvs/kvsapp.h"
 #include "kvs/kvsapp_options.h"
+#include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
+
+LOG_MODULE_REGISTER(kvsapp, LOG_LEVEL_DBG);
 
 /* Internal headers */
 #include "os/allocator.h"
@@ -44,84 +48,49 @@
 #define DEFAULT_PUT_MEDIA_SEND_TIMEOUT_MS (1 * 1000)
 #define DEFAULT_RING_BUFFER_MEM_LIMIT (1 * 1024 * 1024)
 
-typedef struct PolicyRingBufferParameter
-{
-    size_t uMemLimit;
-} PolicyRingBufferParameter_t;
+struct k_mutex wrapper_mutex;
 
-typedef struct StreamStrategy
+/*Codes_SRS_CRT_ABSTRACTIONS_99_038: [mallocAndstrcpy_s shall allocate memory for destination buffer to fit the string in the source parameter.]*/
+static int k_mallocAndStrcpy_s(char** destination, const char* source)
 {
-    KvsApp_streamPolicy_t xPolicy;
-    union
+    int result;
+    int copied_result;
+    /*Codes_SRS_CRT_ABSTRACTIONS_99_036: [destination parameter or source parameter is NULL, the error code returned shall be EINVAL and destination shall not be modified.]*/
+    if ((destination == NULL) || (source == NULL))
     {
-        PolicyRingBufferParameter_t xRingBufferPara;
-    };
-} StreamStrategy_t;
+        /*If strDestination or strSource is a NULL pointer[...]these functions return EINVAL */
+        result = EINVAL;
+    }
+    else
+    {
+        size_t l = strlen(source);
+        char* temp = (char*)k_malloc(l + 1);
 
-typedef struct OnMkvSentCallbackInfo
-{
-    OnMkvSentCallback_t onMkvSentCallback;
-    void *pAppData;
-} OnMkvSentCallbackInfo_t;
-
-typedef struct KvsApp
-{
-    LOCK_HANDLE xLock;
-
-    char *pHost;
-    char *pRegion;
-    char *pService;
-    char *pStreamName;
-    char *pDataEndpoint;
-
-    /* AWS access key, access secret and session token */
-    char *pAwsAccessKeyId;
-    char *pAwsSecretAccessKey;
-    char *pAwsSessionToken;
-
-    /* Iot certificates */
-    char *pIotCredentialHost;
-    char *pIotRoleAlias;
-    char *pIotThingName;
-    char *pIotX509RootCa;
-    char *pIotX509Certificate;
-    char *pIotX509PrivateKey;
-    IotCredentialToken_t *pToken;
-
-    /* Restful request parameters */
-    KvsServiceParameter_t xServicePara;
-    KvsDescribeStreamParameter_t xDescPara;
-    KvsCreateStreamParameter_t xCreatePara;
-    KvsGetDataEndpointParameter_t xGetDataEpPara;
-    KvsPutMediaParameter_t xPutMediaPara;
-
-    unsigned int uDataRetentionInHours;
-
-    /* KVS streaming variables */
-    uint64_t uEarliestTimestamp;
-    StreamHandle xStreamHandle;
-    PutMediaHandle xPutMediaHandle;
-    bool isEbmlHeaderUpdated;
-    StreamStrategy_t xStrategy;
-
-    /* Track information */
-    VideoTrackInfo_t *pVideoTrackInfo;
-    uint8_t *pSps;
-    size_t uSpsLen;
-    uint8_t *pPps;
-    size_t uPpsLen;
-
-    bool isAudioTrackPresent;
-    AudioTrackInfo_t *pAudioTrackInfo;
-
-    /* Session scope callbacks */
-    OnMkvSentCallbackInfo_t onMkvSentCallbackInfo;
-} KvsApp_t;
-
-typedef struct DataFrameUserData
-{
-    DataFrameCallbacks_t xCallbacks;
-} DataFrameUserData_t;
+        /*Codes_SRS_CRT_ABSTRACTIONS_99_037: [Upon failure to allocate memory for the destination, the function will return ENOMEM.]*/
+        if (temp == NULL)
+        {
+            result = ENOMEM;
+        }
+        else
+        {
+            *destination = temp;
+            /*Codes_SRS_CRT_ABSTRACTIONS_99_039: [mallocAndstrcpy_s shall copy the contents in the address source, including the terminating null character into location specified by the destination pointer after the memory allocation.]*/
+            copied_result = strcpy_s(*destination, l + 1, source);
+            if (copied_result < 0) /*strcpy_s error*/
+            {
+                k_free(*destination);
+                *destination = NULL;
+                result = copied_result;
+            }
+            else
+            {
+                /*Codes_SRS_CRT_ABSTRACTIONS_99_035: [mallocAndstrcpy_s shall return Zero upon success]*/
+                result = 0;
+            }
+        }
+    }
+    return result;
+}
 
 /**
  * Default implementation of OnDataFrameTerminateCallback_t. It calls free() to pData to release resource.
@@ -221,7 +190,7 @@ static int prvMallocAndStrcpyHelper(char **destination, const char *source)
             kvsFree(*destination);
             *destination = NULL;
         }
-        if (mallocAndStrcpy_s(destination, source) != 0)
+        if (k_mallocAndStrcpy_s(destination, source) != 0)
         {
             res = KVS_ERROR_OUT_OF_MEMORY;
         }
@@ -452,9 +421,10 @@ static void updateIotCredential(KvsApp_t *pKvs)
 
     if (isIotCertAvailable(pKvs))
     {
+        LOG_DBG("Updating Iot credential"); 
         Iot_credentialTerminate(pKvs->pToken);
         pKvs->pToken = NULL;
-
+        LOG_DBG("Iot credential terminated");
         if ((pToken = Iot_getCredential(&xIotCredentialReq)) == NULL)
         {
             LogError("Failed to get Iot credential");
@@ -893,7 +863,7 @@ static int prvPutMediaDoWorkSendEndOfFrames(KvsApp_t *pKvs)
     return res;
 }
 
-KvsAppHandle KvsApp_create(const char *pcHost, const char *pcRegion, const char *pcService, const char *pcStreamName)
+KvsAppHandle KvsApp_create(const char *pcHost, const char *pcRegion, const char *pcService, const char *pcStreamName, const char *secretKey, const char *accessKey)
 {
     int res = KVS_ERRNO_NONE;
     KvsApp_t *pKvs = NULL;
@@ -911,8 +881,8 @@ KvsAppHandle KvsApp_create(const char *pcHost, const char *pcRegion, const char 
     else
     {
         memset(pKvs, 0, sizeof(KvsApp_t));
-
-        if ((pKvs->xLock = Lock_Init()) == NULL)
+        pKvs->xLockMutex = &wrapper_mutex;
+        if (k_mutex_init(pKvs->xLockMutex))//(pKvs->xLock = Lock_Init()) == NULL)
         {
             res = KVS_ERROR_LOCK_ERROR;
             LogError("Failed to init lock");
@@ -929,8 +899,8 @@ KvsAppHandle KvsApp_create(const char *pcHost, const char *pcRegion, const char 
         else
         {
             pKvs->pDataEndpoint = NULL;
-            pKvs->pAwsAccessKeyId = NULL;
-            pKvs->pAwsSecretAccessKey = NULL;
+            pKvs->pAwsAccessKeyId = accessKey;
+            pKvs->pAwsSecretAccessKey = secretKey;
             pKvs->pIotCredentialHost = NULL;
             pKvs->pIotRoleAlias = NULL;
             pKvs->pIotThingName = NULL;
@@ -966,7 +936,7 @@ void KvsApp_terminate(KvsAppHandle handle)
 {
     KvsApp_t *pKvs = (KvsApp_t *)handle;
 
-    if (pKvs != NULL && Lock(pKvs->xLock) == LOCK_OK)
+    if (pKvs != NULL && k_mutex_lock(pKvs->xLockMutex, K_FOREVER))
     {
         if (pKvs->xStreamHandle != NULL)
         {
@@ -1063,9 +1033,9 @@ void KvsApp_terminate(KvsAppHandle handle)
             pKvs->pPps = NULL;
         }
 
-        Unlock(pKvs->xLock);
+        k_mutex_unlock(pKvs->xLockMutex);
 
-        Lock_Deinit(pKvs->xLock);
+        //Lock_Deinit(pKvs->xLock);
 
         memset(pKvs, 0, sizeof(KvsApp_t));
         kvsFree(pKvs);
@@ -1160,6 +1130,7 @@ int KvsApp_setoption(KvsAppHandle handle, const char *pcOptionName, const char *
             if ((res = prvMallocAndStrcpyHelper(&(pKvs->pIotX509PrivateKey), pValue)) != 0)
             {
                 LogError("Failed to set pIotX509PrivateKey");
+                LOG_ERR("Failed to set pIotX509PrivateKey %d", res);
                 /* Propagate the res error */
             }
         }
@@ -1312,6 +1283,7 @@ int KvsApp_open(KvsAppHandle handle)
     else
     {
         updateIotCredential(pKvs);
+        LOG_DBG("updateIotCredential done");
         if ((res = updateAndVerifyRestfulReqParameters(pKvs)) != KVS_ERRNO_NONE)
         {
             LogError("Failed to setup KVS");
@@ -1361,7 +1333,7 @@ int KvsApp_close(KvsAppHandle handle)
     {
         if (pKvs->xPutMediaHandle != NULL)
         {
-            if (Lock(pKvs->xLock) != LOCK_OK)
+            if (k_mutex_lock(pKvs->xLockMutex, K_FOREVER))
             {
                 res = KVS_ERROR_LOCK_ERROR;
                 LogError("Failed to lock");
@@ -1371,7 +1343,7 @@ int KvsApp_close(KvsAppHandle handle)
                 Kvs_putMediaFinish(pKvs->xPutMediaHandle);
                 pKvs->xPutMediaHandle = NULL;
                 pKvs->isEbmlHeaderUpdated = false;
-                Unlock(pKvs->xLock);
+                k_mutex_unlock(pKvs->xLockMutex);
             }
         }
     }

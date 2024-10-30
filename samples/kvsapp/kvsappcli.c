@@ -328,6 +328,7 @@ int main(int argc, char *argv[])
     /* Resolve KVS stream name */
     pKvsStreamName = (argc >= 2) ? argv[1] : KVS_STREAM_NAME;
 
+    // Initialize KVS
     if ((kvsAppHandle = KvsApp_create(OptCfg_getHostKinesisVideo(), OptCfg_getRegion(), OptCfg_getServiceKinesisVideo(), pKvsStreamName)) == NULL)
     {
         printf("Failed to initialize KVS\n");
