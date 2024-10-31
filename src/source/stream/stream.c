@@ -120,7 +120,7 @@ StreamHandle Kvs_streamCreate(VideoTrackInfo_t *pVideoTrackInfo, AudioTrackInfo_
     {
         LogError("Invalid argument");
     }
-    else if ((pxStream = (Stream_t *)kvsMalloc(sizeof(Stream_t))) == NULL)
+    else if ((pxStream = (Stream_t *)k_malloc(sizeof(Stream_t))) == NULL)
     {
         LogError("OOM: pxStream");
     }
@@ -134,13 +134,13 @@ StreamHandle Kvs_streamCreate(VideoTrackInfo_t *pVideoTrackInfo, AudioTrackInfo_
         if (Mkv_initializeHeaders(&xMkvHeader, pVideoTrackInfo, pAudioTrackInfo) != KVS_ERRNO_NONE)
         {
             LogError("Failed to initialize mkv headers");
-            kvsFree(pxStream);
+            k_free(pxStream);
             pxStream = NULL;
         }
         else if (k_mutex_init(pxStream->xLockMutex))//((pxStream->xLock = Lock_Init()) == NULL)
         {
             LogError("Failed to initialize lock");
-            kvsFree(pxStream);
+            k_free(pxStream);
             pxStream = NULL;
         }
         else
@@ -161,9 +161,9 @@ void Kvs_streamTermintate(StreamHandle xStreamHandle)
 
     if (pxStream != NULL)
     {
-        kvsFree(pxStream->pMkvEbmlSeg);
+        k_free(pxStream->pMkvEbmlSeg);
         //Lock_Deinit(pxStream->xLock);
-        kvsFree(pxStream);
+        k_free(pxStream);
     }
 }
 
@@ -216,7 +216,7 @@ DataFrameHandle Kvs_streamAddDataFrame(StreamHandle xStreamHandle, DataFrameIn_t
         res = KVS_ERROR_INVALID_CLUSTER_HDR_LEN;
         LogError("Invalid cluster len");
     }
-    else if ((pxDataFrame = (DataFrame_t *)kvsMalloc(sizeof(DataFrame_t) + uMkvHdrLen)) == NULL)
+    else if ((pxDataFrame = (DataFrame_t *)k_malloc(sizeof(DataFrame_t) + uMkvHdrLen)) == NULL)
     {
         res = KVS_ERROR_OUT_OF_MEMORY;
         LogError("OOM: pxDataFrame");
@@ -316,7 +316,7 @@ DataFrameHandle Kvs_streamAddDataFrame(StreamHandle xStreamHandle, DataFrameIn_t
     {
         if (pxDataFrame != NULL)
         {
-            kvsFree(pxDataFrame);
+            k_free(pxDataFrame);
             pxDataFrame = NULL;
         }
     }
@@ -462,6 +462,6 @@ void Kvs_dataFrameTerminate(DataFrameHandle xDataFrameHandle)
 
     if (pxDataFrame != NULL)
     {
-        kvsFree(pxDataFrame);
+        k_free(pxDataFrame);
     }
 }
