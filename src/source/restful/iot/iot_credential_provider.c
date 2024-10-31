@@ -203,7 +203,7 @@ IotCredentialToken_t *Iot_getCredential(IotCredentialRequest_t *pReq)
         }
         else
         {
-            if ((pToken = (IotCredentialToken_t *)kvsMalloc(sizeof(IotCredentialToken_t))) == NULL)
+            if ((pToken = (IotCredentialToken_t *)k_malloc(sizeof(IotCredentialToken_t))) == NULL)
             {
                 res = KVS_ERROR_OUT_OF_MEMORY;
                 LogError("OOM: pToken");
@@ -245,16 +245,16 @@ void Iot_credentialTerminate(IotCredentialToken_t *pToken)
     {
         if (pToken->pAccessKeyId != NULL)
         {
-            kvsFree(pToken->pAccessKeyId);
+            k_free(pToken->pAccessKeyId);
         }
         if (pToken->pSecretAccessKey != NULL)
         {
-            kvsFree(pToken->pSecretAccessKey);
+            k_free(pToken->pSecretAccessKey);
         }
         if (pToken->pSessionToken != NULL)
         {
-            kvsFree(pToken->pSessionToken);
+            k_free(pToken->pSessionToken);
         }
-        kvsFree(pToken);
+        k_free(pToken);
     }
 }

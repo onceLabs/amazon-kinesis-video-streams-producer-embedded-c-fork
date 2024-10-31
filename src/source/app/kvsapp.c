@@ -106,8 +106,8 @@ static int defaultOnDataFrameTerminate(uint8_t *pData, size_t uDataLen, uint64_t
 {
     if (pData != NULL)
     {
-        /* NOTE: this frame is not allocated from KVS, so it should not be freed by kvsFree() */
-        free(pData);
+        /* NOTE: this frame is not allocated from KVS, so it should not be freed by k_free() */
+        k_free(pData);
     }
 
     return KVS_ERRNO_NONE;
@@ -138,18 +138,18 @@ static void prvVideoTrackInfoTerminate(VideoTrackInfo_t *pVideoTrackInfo)
     {
         if (pVideoTrackInfo->pTrackName != NULL)
         {
-            kvsFree(pVideoTrackInfo->pTrackName);
+            k_free(pVideoTrackInfo->pTrackName);
         }
         if (pVideoTrackInfo->pCodecName != NULL)
         {
-            kvsFree(pVideoTrackInfo->pCodecName);
+            k_free(pVideoTrackInfo->pCodecName);
         }
         if (pVideoTrackInfo->pCodecPrivate != NULL)
         {
-            kvsFree(pVideoTrackInfo->pCodecPrivate);
+            k_free(pVideoTrackInfo->pCodecPrivate);
         }
         memset(pVideoTrackInfo, 0, sizeof(VideoTrackInfo_t));
-        kvsFree(pVideoTrackInfo);
+        k_free(pVideoTrackInfo);
     }
 }
 
@@ -159,18 +159,18 @@ static void prvAudioTrackInfoTerminate(AudioTrackInfo_t *pAudioTrackInfo)
     {
         if (pAudioTrackInfo->pTrackName != NULL)
         {
-            kvsFree(pAudioTrackInfo->pTrackName);
+            k_free(pAudioTrackInfo->pTrackName);
         }
         if (pAudioTrackInfo->pCodecName != NULL)
         {
-            kvsFree(pAudioTrackInfo->pCodecName);
+            k_free(pAudioTrackInfo->pCodecName);
         }
         if (pAudioTrackInfo->pCodecPrivate != NULL)
         {
-            kvsFree(pAudioTrackInfo->pCodecPrivate);
+            k_free(pAudioTrackInfo->pCodecPrivate);
         }
         memset(pAudioTrackInfo, 0, sizeof(VideoTrackInfo_t));
-        kvsFree(pAudioTrackInfo);
+        k_free(pAudioTrackInfo);
     }
 }
 
@@ -187,7 +187,7 @@ static int prvMallocAndStrcpyHelper(char **destination, const char *source)
     {
         if (*destination != NULL)
         {
-            kvsFree(*destination);
+            k_free(*destination);
             *destination = NULL;
         }
         if (k_mallocAndStrcpy_s(destination, source) != 0)
@@ -209,7 +209,7 @@ static int prvBufMallocAndCopy(uint8_t **ppDst, size_t *puDstLen, uint8_t *pSrc,
     {
         res = KVS_ERROR_INVALID_ARGUMENT;
     }
-    else if ((pDst = (uint8_t *)kvsMalloc(uSrcLen)) == NULL)
+    else if ((pDst = (uint8_t *)k_malloc(uSrcLen)) == NULL)
     {
         res = KVS_ERROR_OUT_OF_MEMORY;
     }
@@ -224,7 +224,7 @@ static int prvBufMallocAndCopy(uint8_t **ppDst, size_t *puDstLen, uint8_t *pSrc,
     {
         if (pDst != NULL)
         {
-            kvsFree(pDst);
+            k_free(pDst);
         }
     }
 
@@ -243,7 +243,7 @@ static void prvStreamFlush(KvsApp_t *pKvs)
         prvCallOnDataFrameTerminate(pDataFrameIn);
         if (pDataFrameIn->pUserData != NULL)
         {
-            kvsFree(pDataFrameIn->pUserData);
+            k_free(pDataFrameIn->pUserData);
         }
         Kvs_dataFrameTerminate(xDataFrameHandle);
     }
@@ -283,7 +283,7 @@ static int prvStreamFlushToNextCluster(KvsApp_t *pKvs)
                 prvCallOnDataFrameTerminate(pDataFrameIn);
                 if (pDataFrameIn->pUserData != NULL)
                 {
-                    kvsFree(pDataFrameIn->pUserData);
+                    k_free(pDataFrameIn->pUserData);
                 }
                 Kvs_dataFrameTerminate(xDataFrameHandle);
             }
@@ -306,7 +306,7 @@ static void prvStreamFlushHeadUntilMem(KvsApp_t *pKvs, size_t uMemLimit)
         prvCallOnDataFrameTerminate(pDataFrameIn);
         if (pDataFrameIn->pUserData != NULL)
         {
-            kvsFree(pDataFrameIn->pUserData);
+            k_free(pDataFrameIn->pUserData);
         }
         Kvs_dataFrameTerminate(xDataFrameHandle);
     }
@@ -317,7 +317,7 @@ static VideoTrackInfo_t *prvCopyVideoTrackInfo(VideoTrackInfo_t *pSrcVideoTrackI
     int res = KVS_ERRNO_NONE;
     VideoTrackInfo_t *pDstVideoTrackInfo = NULL;
 
-    if ((pDstVideoTrackInfo = (VideoTrackInfo_t *)kvsMalloc(sizeof(VideoTrackInfo_t))) == NULL)
+    if ((pDstVideoTrackInfo = (VideoTrackInfo_t *)k_malloc(sizeof(VideoTrackInfo_t))) == NULL)
     {
         res = KVS_ERROR_OUT_OF_MEMORY;
     }
@@ -330,7 +330,7 @@ static VideoTrackInfo_t *prvCopyVideoTrackInfo(VideoTrackInfo_t *pSrcVideoTrackI
         {
             /* Propagate the res error */
         }
-        else if ((pDstVideoTrackInfo->pCodecPrivate = (uint8_t *)kvsMalloc(pSrcVideoTrackInfo->uCodecPrivateLen)) == NULL)
+        else if ((pDstVideoTrackInfo->pCodecPrivate = (uint8_t *)k_malloc(pSrcVideoTrackInfo->uCodecPrivateLen)) == NULL)
         {
             res = KVS_ERROR_OUT_OF_MEMORY;
         }
@@ -358,7 +358,7 @@ static AudioTrackInfo_t *prvCopyAudioTrackInfo(AudioTrackInfo_t *pSrcAudioTrackI
     int res = KVS_ERRNO_NONE;
     AudioTrackInfo_t *pDstAudioTrackInfo = NULL;
 
-    if ((pDstAudioTrackInfo = (AudioTrackInfo_t *)kvsMalloc(sizeof(AudioTrackInfo_t))) == NULL)
+    if ((pDstAudioTrackInfo = (AudioTrackInfo_t *)k_malloc(sizeof(AudioTrackInfo_t))) == NULL)
     {
         res = KVS_ERROR_OUT_OF_MEMORY;
     }
@@ -371,7 +371,7 @@ static AudioTrackInfo_t *prvCopyAudioTrackInfo(AudioTrackInfo_t *pSrcAudioTrackI
         {
             /* Propagate the res error */
         }
-        else if ((pDstAudioTrackInfo->pCodecPrivate = (uint8_t *)kvsMalloc(pSrcAudioTrackInfo->uCodecPrivateLen)) == NULL)
+        else if ((pDstAudioTrackInfo->pCodecPrivate = (uint8_t *)k_malloc(pSrcAudioTrackInfo->uCodecPrivateLen)) == NULL)
         {
             res = KVS_ERROR_OUT_OF_MEMORY;
         }
@@ -619,7 +619,7 @@ static int createStream(KvsApp_t *pKvs)
 
             if (pCodecPrivateData != NULL)
             {
-                kvsFree(pCodecPrivateData);
+                k_free(pCodecPrivateData);
             }
         }
 
@@ -787,7 +787,7 @@ static int prvPutMediaSendData(KvsApp_t *pKvs, int *pxSendCnt, bool bForceSend)
             prvCallOnDataFrameTerminate(pDataFrameIn);
             if (pDataFrameIn->pUserData != NULL)
             {
-                kvsFree(pDataFrameIn->pUserData);
+                k_free(pDataFrameIn->pUserData);
             }
             Kvs_dataFrameTerminate(xDataFrameHandle);
         }
@@ -874,7 +874,7 @@ KvsAppHandle KvsApp_create(const char *pcHost, const char *pcRegion, const char 
         res = KVS_ERROR_INVALID_ARGUMENT;
         LogError("Invalid parameter");
     }
-    else if ((pKvs = (KvsApp_t *)kvsMalloc(sizeof(KvsApp_t))) == NULL)
+    else if ((pKvs = (KvsApp_t *)k_malloc(sizeof(KvsApp_t))) == NULL)
     {
         res = KVS_ERROR_OUT_OF_MEMORY;
         LogError("OOM: pKvs");
@@ -947,72 +947,72 @@ void KvsApp_terminate(KvsAppHandle handle)
         }
         if (pKvs->pHost != NULL)
         {
-            kvsFree(pKvs->pHost);
+            k_free(pKvs->pHost);
             pKvs->pHost = NULL;
         }
         if (pKvs->pRegion != NULL)
         {
-            kvsFree(pKvs->pRegion);
+            k_free(pKvs->pRegion);
             pKvs->pRegion = NULL;
         }
         if (pKvs->pService != NULL)
         {
-            kvsFree(pKvs->pService);
+            k_free(pKvs->pService);
             pKvs->pService = NULL;
         }
         if (pKvs->pStreamName != NULL)
         {
-            kvsFree(pKvs->pStreamName);
+            k_free(pKvs->pStreamName);
             pKvs->pStreamName = NULL;
         }
         if (pKvs->pDataEndpoint != NULL)
         {
-            kvsFree(pKvs->pDataEndpoint);
+            k_free(pKvs->pDataEndpoint);
             pKvs->pDataEndpoint = NULL;
         }
         if (pKvs->pAwsAccessKeyId != NULL)
         {
-            kvsFree(pKvs->pAwsAccessKeyId);
+            k_free(pKvs->pAwsAccessKeyId);
             pKvs->pAwsAccessKeyId = NULL;
         }
         if (pKvs->pAwsSecretAccessKey != NULL)
         {
-            kvsFree(pKvs->pAwsSecretAccessKey);
+            k_free(pKvs->pAwsSecretAccessKey);
             pKvs->pAwsSecretAccessKey = NULL;
         }
         if (pKvs->pAwsSessionToken != NULL)
         {
-            kvsFree(pKvs->pAwsSessionToken);
+            k_free(pKvs->pAwsSessionToken);
             pKvs->pAwsSessionToken = NULL;
         }
         if (pKvs->pIotCredentialHost != NULL)
         {
-            kvsFree(pKvs->pIotCredentialHost);
+            k_free(pKvs->pIotCredentialHost);
             pKvs->pIotCredentialHost = NULL;
         }
         if (pKvs->pIotRoleAlias != NULL)
         {
-            kvsFree(pKvs->pIotRoleAlias);
+            k_free(pKvs->pIotRoleAlias);
             pKvs->pIotRoleAlias = NULL;
         }
         if (pKvs->pIotThingName != NULL)
         {
-            kvsFree(pKvs->pIotThingName);
+            k_free(pKvs->pIotThingName);
             pKvs->pIotThingName = NULL;
         }
         if (pKvs->pIotX509RootCa != NULL)
         {
-            kvsFree(pKvs->pIotX509RootCa);
+            k_free(pKvs->pIotX509RootCa);
             pKvs->pIotX509RootCa = NULL;
         }
         if (pKvs->pIotX509Certificate != NULL)
         {
-            kvsFree(pKvs->pIotX509Certificate);
+            k_free(pKvs->pIotX509Certificate);
             pKvs->pIotX509Certificate = NULL;
         }
         if (pKvs->pIotX509PrivateKey != NULL)
         {
-            kvsFree(pKvs->pIotX509PrivateKey);
+            k_free(pKvs->pIotX509PrivateKey);
             pKvs->pIotX509PrivateKey = NULL;
         }
         if (pKvs->pVideoTrackInfo != NULL)
@@ -1025,12 +1025,12 @@ void KvsApp_terminate(KvsAppHandle handle)
         }
         if (pKvs->pSps != NULL)
         {
-            kvsFree(pKvs->pSps);
+            k_free(pKvs->pSps);
             pKvs->pSps = NULL;
         }
         if (pKvs->pPps != NULL)
         {
-            kvsFree(pKvs->pPps);
+            k_free(pKvs->pPps);
             pKvs->pPps = NULL;
         }
 
@@ -1039,7 +1039,7 @@ void KvsApp_terminate(KvsAppHandle handle)
         //Lock_Deinit(pKvs->xLock);
 
         memset(pKvs, 0, sizeof(KvsApp_t));
-        kvsFree(pKvs);
+        k_free(pKvs);
     }
 }
 
@@ -1076,7 +1076,7 @@ int KvsApp_setoption(KvsAppHandle handle, const char *pcOptionName, const char *
             {
                 if (pKvs->pAwsSessionToken != NULL)
                 {
-                    kvsFree(pKvs->pAwsSessionToken);
+                    k_free(pKvs->pAwsSessionToken);
                 }
                 pKvs->pAwsSessionToken = NULL;
             }
@@ -1389,7 +1389,7 @@ int KvsApp_addFrameWithCallbacks(KvsAppHandle handle, uint8_t *pData, size_t uDa
     {
         res = KVS_ERROR_STREAM_NOT_READY;
     }
-    else if ((pUserData = (DataFrameUserData_t *)kvsMalloc(sizeof(DataFrameUserData_t))) == NULL)
+    else if ((pUserData = (DataFrameUserData_t *)k_malloc(sizeof(DataFrameUserData_t))) == NULL)
     {
         res = KVS_ERROR_OUT_OF_MEMORY;
         LogError("OOM: pUserData");
@@ -1449,7 +1449,7 @@ int KvsApp_addFrameWithCallbacks(KvsAppHandle handle, uint8_t *pData, size_t uDa
         }
         if (pUserData != NULL)
         {
-            kvsFree(pUserData);
+            k_free(pUserData);
         }
     }
 

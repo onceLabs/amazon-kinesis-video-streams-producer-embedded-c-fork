@@ -128,7 +128,7 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
     }
     else
     {
-        mbedtls_ssl_set_bio(&(pxNet->xSsl), ( void * )_pxNet->tcpSocket, zephyr_net_send, zephyr_net_rcv, NULL);
+        mbedtls_ssl_set_bio(&(pxNet->xSsl), ( void * )&_pxNet->tcpSocket, zephyr_net_send, zephyr_net_rcv, NULL);
 
         if ((retVal = mbedtls_ssl_config_defaults(&(pxNet->xConf), MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT)) != 0)
         {
@@ -342,6 +342,7 @@ int NetIo_connectWithX509(NetIoHandle xNetIoHandle, const char *pcHost, const ch
 
 void NetIo_disconnect(NetIoHandle xNetIoHandle)
 {
+    LOG_DBG("NETIO_Disconnecting");
     NetIo_t *pxNet = (NetIo_t *)xNetIoHandle;
 
     if (pxNet != NULL)
