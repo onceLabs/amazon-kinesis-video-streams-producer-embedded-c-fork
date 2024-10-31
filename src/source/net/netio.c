@@ -342,7 +342,6 @@ int NetIo_connectWithX509(NetIoHandle xNetIoHandle, const char *pcHost, const ch
 
 void NetIo_disconnect(NetIoHandle xNetIoHandle)
 {
-    LOG_DBG("NETIO_Disconnecting");
     NetIo_t *pxNet = (NetIo_t *)xNetIoHandle;
 
     if (pxNet != NULL)
