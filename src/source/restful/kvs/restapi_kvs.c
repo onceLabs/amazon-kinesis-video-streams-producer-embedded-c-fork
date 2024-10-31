@@ -788,8 +788,6 @@ int Kvs_describeStream(KvsServiceParameter_t *pServPara, KvsDescribeStreamParame
         }
     }
 
-    LogInfo("Made it here ???");
-
     NetIo_disconnect(xNetIoHandle);
     NetIo_terminate(xNetIoHandle);
     SAFE_FREE(pRspBody);
