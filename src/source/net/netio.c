@@ -309,24 +309,24 @@ void NetIo_terminate(NetIoHandle xNetIoHandle)
         if (pxNet->pRootCA != NULL)
         {
             mbedtls_x509_crt_free(pxNet->pRootCA);
-            kvsFree(pxNet->pRootCA);
+            k_free(pxNet->pRootCA);
             pxNet->pRootCA = NULL;
         }
 
         if (pxNet->pCert != NULL)
         {
             mbedtls_x509_crt_free(pxNet->pCert);
-            kvsFree(pxNet->pCert);
+            k_free(pxNet->pCert);
             pxNet->pCert = NULL;
         }
 
         if (pxNet->pPrivKey != NULL)
         {
             mbedtls_pk_free(pxNet->pPrivKey);
-            kvsFree(pxNet->pPrivKey);
+            k_free(pxNet->pPrivKey);
             pxNet->pPrivKey = NULL;
         }
-        kvsFree(pxNet);
+        k_free(pxNet);
     }
 }
 
