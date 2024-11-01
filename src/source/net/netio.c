@@ -19,6 +19,7 @@
 
 #include <sys/time.h>
 #include <socket.h>
+#include <zephyr/kernel.h>
 #include <zephyr/net/socket.h>
 /* Third party headers */
 #include "azure_c_shared_utility/xlogging.h"

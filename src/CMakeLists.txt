@@ -12,15 +12,15 @@ set(CMAKE_CXX_FLAGS "--std=c++11 ${CMAKE_CXX_FLAGS}")
 set(CMAKE_C_FLAGS "-D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200112L ${CMAKE_C_FLAGS}")
 
 set(LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(ZEPHYR_DIR /opt/nordic/ncs/v2.7.0/zephyr)
-set(ZEPHYR_MODUELS_DIR /opt/nordic/ncs/v2.7.0/modules)
+set(ZEPHYR_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../zephyr)
+set(ZEPHYR_MODUELS_DIR ${ZEPHYR_DIR}/../../../modules)
 
 add_definitions(-DCONFIG_ARM)
 add_definitions(-DCONFIG_MP_MAX_NUM_CPUS=1)
 add_definitions(-DMBEDTLS_DEBUG_C)
 
 set(LIB_SRC
-    ${GENERATED_HEADERS_DIR}/autoconf.h
+    ${GENERATED_HEADERS_DIR}/zephyr/autoconf.h
     ${LIB_DIR}/include/kvs/kvsapp.h
     ${LIB_DIR}/include/kvs/kvsapp_options.h
     ${LIB_DIR}/include/kvs/errors.h
@@ -61,9 +61,10 @@ set(LIB_PUB_INC
     ${LIB_DIR}/include
     ${ZEPHYR_DIR}/include/zephyr/net
     ${ZEPHYR_DIR}/include
+    ${ZEPHYR_DIR}/../modules/crypto/mbedtls/include
     ${ZEPHYR_DIR}/subsys/testsuite/ztest/include/zephyr
-    ${GENERATED_HEADERS_DIR}
-    ${GENERATED_HEADERS_DIR}/syscalls
+    ${GENERATED_HEADERS_DIR}/zephyr
+    ${GENERATED_HEADERS_DIR}/zephyr/syscalls
     ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include/mbedtls
 )
 
