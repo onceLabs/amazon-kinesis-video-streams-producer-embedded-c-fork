@@ -17,6 +17,7 @@
 #include <inttypes.h>
 #include <stddef.h>
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
 /* Thirdparty headers */
 #include "azure_c_shared_utility/buffer_.h"
 #include "azure_c_shared_utility/doublylinkedlist.h"
@@ -39,6 +40,8 @@
 #include "misc/json_helper.h"
 #include "net/http_helper.h"
 #include "net/netio.h"
+
+LOG_MODULE_REGISTER(restapi, LOG_LEVEL_DBG);
 
 #ifndef SAFE_FREE
 #define SAFE_FREE(a) \
@@ -783,7 +786,8 @@ int Kvs_describeStream(KvsServiceParameter_t *pServPara, KvsDescribeStreamParame
 
         if (uHttpStatusCode != 200)
         {
-            LogInfo("Describe Stream failed, HTTP status code: %u", uHttpStatusCode);
+            // LogInfo("Describe Stream failed, HTTP status code: %u", uHttpStatusCode);
+            LOG_WRN("Describe Stream failed, HTTP status code: %u", uHttpStatusCode);
             LogInfo("HTTP response message:%.*s", (int)uRspBodyLen, pRspBody);
         }
     }

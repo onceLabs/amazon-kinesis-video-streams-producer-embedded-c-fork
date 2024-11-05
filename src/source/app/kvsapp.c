@@ -448,6 +448,7 @@ static int updateAndVerifyRestfulReqParameters(KvsApp_t *pKvs)
 
     if (pKvs->pToken != NULL)
     {
+        LOG_DBG("Initial Access key: %s, new access key: %s", pKvs->xServicePara.pcAccessKey, pKvs->pToken->pAccessKeyId);
         pKvs->xServicePara.pcAccessKey = pKvs->pToken->pAccessKeyId;
         pKvs->xServicePara.pcSecretKey = pKvs->pToken->pSecretAccessKey;
         pKvs->xServicePara.pcToken = pKvs->pToken->pSessionToken;
