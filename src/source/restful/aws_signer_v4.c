@@ -286,6 +286,8 @@ int AwsSigV4_AddCanonicalHeader(AwsSigV4Handle xSigV4Handle, const char *pcHeade
         /* nop */
     }
 
+    LOG_DBG("Add- Canonical headers: %s", STRING_c_str(pxAwsSigV4->xStCanonicalRequest));
+
     return res;
 }
 
@@ -316,6 +318,8 @@ int AwsSigV4_AddCanonicalBody(AwsSigV4Handle xSigV4Handle, const char *pBody, si
         /* nop */
     }
 
+    LOG_DBG("Add- Canonical request: %s", STRING_c_str(pxAwsSigV4->xStCanonicalRequest));
+
     return res;
 }
 
@@ -326,6 +330,7 @@ int AwsSigV4_Sign(AwsSigV4Handle xSigV4Handle, char *pcAccessKey, char *pcSecret
     AwsSigV4_t *pxAwsSigV4 = (AwsSigV4_t *)xSigV4Handle;
     char pcCanonicalReqHexEncSha256[HEX_ENCODED_SHA_256_STRING_SIZE] = {0};
     const mbedtls_md_info_t *pxMdInfo = NULL;
+    mbedtls_md_context_t xMdCtx;
     STRING_HANDLE xStSignedStr = NULL;
     size_t uHmacSize = 0;
     char pHmac[AWS_SIG_V4_MAX_HMAC_SIZE] = {0};
@@ -366,6 +371,12 @@ int AwsSigV4_Sign(AwsSigV4Handle xSigV4Handle, char *pcAccessKey, char *pcSecret
     else if ((uHmacSize = mbedtls_md_get_size(pxMdInfo)) == 0) {
         res = KVS_ERROR_INVALID_MBEDTLS_MESSAGE_DIGEST_SIZE;
     }
+    LOG_DBG("HMAC size: %d", uHmacSize);
+    mbedtls_md_init(&xMdCtx);
+    if ((retVal = mbedtls_md_setup(&xMdCtx, pxMdInfo, 1)) != 0) {
+        res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
+    }
+
 
     LOG_DBG("Scope before: %s", STRING_c_str(pxAwsSigV4->xStScope));
     /* Generate the scope string. */
@@ -394,29 +405,30 @@ int AwsSigV4_Sign(AwsSigV4Handle xSigV4Handle, char *pcAccessKey, char *pcSecret
     {
         res = KVS_ERROR_C_UTIL_STRING_ERROR;
     }
-    LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 1");
+    LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 0");
     /* Calculate the HMAC of date, region, service, signature end, and signed string*/
     if ((retVal = mbedtls_md_hmac(pxMdInfo, (const unsigned char *)pHmac, strlen(pHmac), (const unsigned char *)pcXAmzDate, SIGNATURE_DATE_STRING_LEN, (unsigned char *)pHmac)) != 0 ) {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
     }
-    LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 2");
+    LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 1");
+    // pHmac[SHA256_DIGEST_LENGTH] = '\0';
     if ((retVal = mbedtls_md_hmac(pxMdInfo, (const unsigned char *)pHmac, uHmacSize, (const unsigned char *)pcRegion, strlen(pcRegion), (unsigned char *)pHmac)) != 0 ) {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
     }
-    LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 3");
+    LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 2");
     if ((retVal = mbedtls_md_hmac(pxMdInfo, (const unsigned char *)pHmac, uHmacSize, (const unsigned char *)pcService, strlen(pcService), (unsigned char *)pHmac)) != 0 ) {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
     }
-    LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 4");
+    LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 3");
     if ((retVal = mbedtls_md_hmac(pxMdInfo, (const unsigned char *)pHmac, uHmacSize, (const unsigned char *)AWS_SIG_V4_SIGNATURE_END, sizeof(AWS_SIG_V4_SIGNATURE_END) - 1, (unsigned char *)pHmac)) != 0 ) {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
     }
-    LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 5");
+    LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 4");
     if ((retVal = mbedtls_md_hmac(pxMdInfo, (const unsigned char *)pHmac, uHmacSize, (const unsigned char *)STRING_c_str(xStSignedStr), STRING_length(xStSignedStr), (unsigned char *)pHmac)) != 0)
     {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
     }
-    LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 6");
+    LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 5");
 
 
     if (res == KVS_ERRNO_NONE) {
@@ -460,6 +472,7 @@ int AwsSigV4_Sign(AwsSigV4Handle xSigV4Handle, char *pcAccessKey, char *pcSecret
     // k_free(pcSecretKey);
     k_free(pcSecretKey);
 
+    mbedtls_md_free(&xMdCtx);
 
     return res;
 }
