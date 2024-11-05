@@ -28,7 +28,6 @@
 #include "mbedtls/md.h"
 #include "mbedtls/sha256.h"
 
-
 /* Public headers */
 #include "kvs/errors.h"
 
@@ -177,6 +176,8 @@ static int prvHexEncodedSha256(const unsigned char *pMsg, size_t uMsgLen, char p
     char *p = NULL;
     unsigned char pHashBuf[SHA256_DIGEST_LENGTH] = {0};
 
+    LOG_DBG("Input: %s, %d", pMsg, uMsgLen);
+
     if (pMsg == NULL)
     {
         res = KVS_ERROR_INVALID_ARGUMENT;
@@ -193,6 +194,8 @@ static int prvHexEncodedSha256(const unsigned char *pMsg, size_t uMsgLen, char p
             p += snprintf(p, 3, "%02x", pHashBuf[i]);
         }
     }
+
+    LOG_DBG("Output: %s", pcHexEncodedHash);
 
     return res;
 }
@@ -328,8 +331,6 @@ int AwsSigV4_Sign(AwsSigV4Handle xSigV4Handle, char *pcAccessKey, char *pcSecret
     char pHmac[AWS_SIG_V4_MAX_HMAC_SIZE] = {0};
     int i = 0;
 
-    LOG_DBG("Canonical request: %s", STRING_c_str(pxAwsSigV4->xStCanonicalRequest));
-
     if (pxAwsSigV4 == NULL || pcSecretKey == NULL || pcRegion == NULL || pcService == NULL || pcXAmzDate == NULL)
     {
         res = KVS_ERROR_INVALID_ARGUMENT;
@@ -338,8 +339,17 @@ int AwsSigV4_Sign(AwsSigV4Handle xSigV4Handle, char *pcAccessKey, char *pcSecret
     /* URIencode strings */
     // pcAccessKey = uri_escape(pcAccessKey);
     // pcSecretKey = uri_escape(pcSecretKey);
-    LOG_DBG("Access key: %s", pcAccessKey);
-    LOG_DBG("Secret key: %s", pcSecretKey);
+    LOG_DBG("Access key b: %s", pcAccessKey);
+    LOG_DBG("Secret key b: %s", pcSecretKey);
+    LOG_DBG("Region b: %s", pcRegion);
+    LOG_DBG("Service b: %s", pcService);
+    LOG_DBG("X-Amz-Date b: %s", pcXAmzDate);
+    LOG_DBG("Canonical request b: %s", STRING_c_str(pxAwsSigV4->xStCanonicalRequest));
+    LOG_DBG("Signed headers b: %s", STRING_c_str(pxAwsSigV4->xStSignedHeaders));
+    LOG_DBG("Scope b: %s", STRING_c_str(pxAwsSigV4->xStScope));
+    LOG_DBG("HMAC b: %s", STRING_c_str(pxAwsSigV4->xStHmacHexEncoded));
+    LOG_DBG("Authorization b: %s", STRING_c_str(pxAwsSigV4->xStAuthorization));
+    
 
     /* Do SHA256 on canonical request and then hex encode it. */
     if (
@@ -375,6 +385,11 @@ int AwsSigV4_Sign(AwsSigV4Handle xSigV4Handle, char *pcAccessKey, char *pcSecret
     LOG_DBG("String to sign: %s", STRING_c_str(xStSignedStr));
     
     /* Generate the beginning of the signature. */
+    pcSecretKey = uri_escape(pcSecretKey);
+    if (pcSecretKey == NULL)
+    {
+        res = KVS_ERROR_OUT_OF_MEMORY;
+    }
     if (snprintf(pHmac, AWS_SIG_V4_MAX_HMAC_SIZE, TEMPLATE_SIGNATURE_START, AWS_SIG_V4_SIGNATURE_START, pcSecretKey) == 0)
     {
         res = KVS_ERROR_C_UTIL_STRING_ERROR;
@@ -429,10 +444,21 @@ int AwsSigV4_Sign(AwsSigV4Handle xSigV4Handle, char *pcAccessKey, char *pcSecret
         LogError("Failed to sign the request");
     }
     
+    LOG_DBG("Access key: %s", pcAccessKey);
+    LOG_DBG("Secret key: %s", pcSecretKey);
+    LOG_DBG("Region: %s", pcRegion);
+    LOG_DBG("Service: %s", pcService);
+    LOG_DBG("X-Amz-Date: %s", pcXAmzDate);
+    LOG_DBG("Canonical request: %s", STRING_c_str(pxAwsSigV4->xStCanonicalRequest));
+    LOG_DBG("Signed headers: %s", STRING_c_str(pxAwsSigV4->xStSignedHeaders));
+    LOG_DBG("Scope: %s", STRING_c_str(pxAwsSigV4->xStScope));
+    LOG_DBG("HMAC: %s", STRING_c_str(pxAwsSigV4->xStHmacHexEncoded));
+    LOG_DBG("Authorization: %s", STRING_c_str(pxAwsSigV4->xStAuthorization));
 
     STRING_delete(xStSignedStr);
     // k_free(pcAccessKey);
     // k_free(pcSecretKey);
+    k_free(pcSecretKey);
 
 
     return res;
