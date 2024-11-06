@@ -41,8 +41,8 @@
 #define HDR_X_AMZN_STREAM_NAME          "x-amzn-stream-name"
 
 /* Headers that doesn't need sign */
-#define HDR_ACCEPT                      "accept"
-#define HDR_AUTHORIZATION               "authorization"
+#define HDR_ACCEPT                      "Accept"
+#define HDR_AUTHORIZATION               "Authorization"
 #define HDR_CONTENT_LENGTH              "content-length"
 #define HDR_CONTENT_TYPE                "content-type"
 

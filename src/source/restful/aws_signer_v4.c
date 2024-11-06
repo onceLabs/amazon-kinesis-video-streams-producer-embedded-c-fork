@@ -286,7 +286,7 @@ int AwsSigV4_AddCanonicalHeader(AwsSigV4Handle xSigV4Handle, const char *pcHeade
         /* nop */
     }
 
-    LOG_DBG("Add- Canonical headers: %s", STRING_c_str(pxAwsSigV4->xStCanonicalRequest));
+    // LOG_DBG("Add- Canonical headers: %s", STRING_c_str(pxAwsSigV4->xStCanonicalRequest));
 
     return res;
 }
@@ -318,7 +318,7 @@ int AwsSigV4_AddCanonicalBody(AwsSigV4Handle xSigV4Handle, const char *pBody, si
         /* nop */
     }
 
-    LOG_DBG("Add- Canonical request: %s", STRING_c_str(pxAwsSigV4->xStCanonicalRequest));
+    // LOG_DBG("Add- Canonical request: %s", STRING_c_str(pxAwsSigV4->xStCanonicalRequest));
 
     return res;
 }
@@ -341,20 +341,6 @@ int AwsSigV4_Sign(AwsSigV4Handle xSigV4Handle, char *pcAccessKey, char *pcSecret
     {
         res = KVS_ERROR_INVALID_ARGUMENT;
     }
-
-    /* URIencode strings */
-    // pcAccessKey = uri_escape(pcAccessKey);
-    // pcSecretKey = uri_escape(pcSecretKey);
-    LOG_DBG("Access key b: %s", pcAccessKey);
-    LOG_DBG("Secret key b: %s", pcSecretKey);
-    LOG_DBG("Region b: %s", pcRegion);
-    LOG_DBG("Service b: %s", pcService);
-    LOG_DBG("X-Amz-Date b: %s", pcXAmzDate);
-    LOG_DBG("Canonical request b: %s", STRING_c_str(pxAwsSigV4->xStCanonicalRequest));
-    LOG_DBG("Signed headers b: %s", STRING_c_str(pxAwsSigV4->xStSignedHeaders));
-    LOG_DBG("Scope b: %s", STRING_c_str(pxAwsSigV4->xStScope));
-    LOG_DBG("HMAC b: %s", STRING_c_str(pxAwsSigV4->xStHmacHexEncoded));
-    LOG_DBG("Authorization b: %s", STRING_c_str(pxAwsSigV4->xStAuthorization));
     
 
     /* Do SHA256 on canonical request and then hex encode it. */
@@ -397,7 +383,7 @@ int AwsSigV4_Sign(AwsSigV4Handle xSigV4Handle, char *pcAccessKey, char *pcSecret
     LOG_DBG("String to sign: %s", STRING_c_str(xStSignedStr));
     
     /* Generate the beginning of the signature. */
-    pcSecretKey = uri_escape(pcSecretKey);
+    // pcSecretKey = uri_escape(pcSecretKey);
     if (pcSecretKey == NULL)
     {
         res = KVS_ERROR_OUT_OF_MEMORY;
@@ -409,33 +395,32 @@ int AwsSigV4_Sign(AwsSigV4Handle xSigV4Handle, char *pcAccessKey, char *pcSecret
 
     /* Calculate the HMAC of date, region, service, signature end, and signed string*/
     LOG_DBG("HMAC 0.0: %s, len: %d, date: %s", pHmac, strlen(pHmac), pcXAmzDate);
-    LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 0");
+    // LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 0");
     if ((retVal = mbedtls_md_hmac(pxMdInfo, (const unsigned char *)pHmac, strlen(pHmac), (const unsigned char *)pcXAmzDate, SIGNATURE_DATE_STRING_LEN, (unsigned char *)pHmac2)) != 0 ) {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
     }
-    LOG_HEXDUMP_DBG(pHmac2, strlen(pHmac2), "HMAC 1");
+    // LOG_HEXDUMP_DBG(pHmac2, strlen(pHmac2), "HMAC 1");
     memset(pHmac, 0, sizeof(pHmac));
-    // pHmac[SHA256_DIGEST_LENGTH] = '\0';
     if ((retVal = mbedtls_md_hmac(pxMdInfo, (const unsigned char *)pHmac2, uHmacSize, (const unsigned char *)pcRegion, strlen(pcRegion), (unsigned char *)pHmac)) != 0 ) {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
     }
-    LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 2");
+    // LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 2");
     memset(pHmac2, 0, sizeof(pHmac2));
     if ((retVal = mbedtls_md_hmac(pxMdInfo, (const unsigned char *)pHmac, uHmacSize, (const unsigned char *)pcService, strlen(pcService), (unsigned char *)pHmac2)) != 0 ) {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
     }
-    LOG_HEXDUMP_DBG(pHmac2, strlen(pHmac2), "HMAC 3");
+    // LOG_HEXDUMP_DBG(pHmac2, strlen(pHmac2), "HMAC 3");
     memset(pHmac, 0, sizeof(pHmac));
     if ((retVal = mbedtls_md_hmac(pxMdInfo, (const unsigned char *)pHmac2, uHmacSize, (const unsigned char *)AWS_SIG_V4_SIGNATURE_END, sizeof(AWS_SIG_V4_SIGNATURE_END) - 1, (unsigned char *)pHmac)) != 0 ) {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
     }
-    LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 4");
+    // LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 4");
     memset(pHmac2, 0, sizeof(pHmac2));
     if ((retVal = mbedtls_md_hmac(pxMdInfo, (const unsigned char *)pHmac, uHmacSize, (const unsigned char *)STRING_c_str(xStSignedStr), STRING_length(xStSignedStr), (unsigned char *)pHmac2)) != 0)
     {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
     }
-    LOG_HEXDUMP_DBG(pHmac2, strlen(pHmac2), "HMAC 5");
+    // LOG_HEXDUMP_DBG(pHmac2, strlen(pHmac2), "HMAC 5");
 
 
     if (res == KVS_ERRNO_NONE) {
@@ -477,7 +462,6 @@ int AwsSigV4_Sign(AwsSigV4Handle xSigV4Handle, char *pcAccessKey, char *pcSecret
     STRING_delete(xStSignedStr);
     // k_free(pcAccessKey);
     // k_free(pcSecretKey);
-    k_free(pcSecretKey);
 
     mbedtls_md_free(&xMdCtx);
 

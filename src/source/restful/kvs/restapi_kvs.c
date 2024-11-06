@@ -173,76 +173,77 @@ static AwsSigV4Handle prvSign(KvsServiceParameter_t *pServPara, char *pcUri, cha
     const char *pcVal;
     const char *pcXAmzDate;
 
-    if ((xAwsSigV4Handle = AwsSigV4_Create(HTTP_METHOD_POST, pcUri, pcQuery)) == NULL)
-    {
+    // Create empty canonical request
+    if ((xAwsSigV4Handle = AwsSigV4_Create(HTTP_METHOD_POST, pcUri, pcQuery)) == NULL) {
         res = KVS_ERROR_FAIL_TO_CREATE_SIGV4_HANDLE;
     }
-    else if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_CONNECTION)) != NULL && AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_CONNECTION, pcVal) != KVS_ERRNO_NONE)
-    {
+
+    // Connection header
+    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_CONNECTION)) != NULL && AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_CONNECTION, pcVal) != KVS_ERRNO_NONE) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_HOST)) != NULL && 
-                AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_HOST, pcVal) != KVS_ERRNO_NONE)
-    {
+
+    // Host header
+    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_HOST)) != NULL && 
+                AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_HOST, pcVal) != KVS_ERRNO_NONE) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if (
-        (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_TRANSFER_ENCODING)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_TRANSFER_ENCODING, pcVal) != KVS_ERRNO_NONE)
-    {
+
+    // transfer-encoding header
+    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_TRANSFER_ENCODING)) != NULL &&
+        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_TRANSFER_ENCODING, pcVal) != KVS_ERRNO_NONE) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_USER_AGENT)) != NULL && AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_USER_AGENT, pcVal) != KVS_ERRNO_NONE)
-    {
+
+    // user-agent header
+    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_USER_AGENT)) != NULL && AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_USER_AGENT, pcVal) != KVS_ERRNO_NONE) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if (
-        (pcXAmzDate = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZ_DATE)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZ_DATE, pcXAmzDate) != KVS_ERRNO_NONE)
-    {
+
+    // x-amz-date header
+    if ((pcXAmzDate = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZ_DATE)) != NULL &&
+        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZ_DATE, pcXAmzDate) != KVS_ERRNO_NONE) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if (
-        (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZ_SECURITY_TOKEN)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZ_SECURITY_TOKEN, pcVal) != KVS_ERRNO_NONE)
-    {
+
+    // x-amz-security-token header
+    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZ_SECURITY_TOKEN)) != NULL &&
+        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZ_SECURITY_TOKEN, pcVal) != KVS_ERRNO_NONE) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if (
-        (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_FRAG_ACK_REQUIRED)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_FRAG_ACK_REQUIRED, pcVal) != KVS_ERRNO_NONE)
-    {
+
+    // x-amzn-fragment-acknowledgment-required header
+    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_FRAG_ACK_REQUIRED)) != NULL &&
+        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_FRAG_ACK_REQUIRED, pcVal) != KVS_ERRNO_NONE) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if (
-        (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_FRAG_T_TYPE)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_FRAG_T_TYPE, pcVal) != KVS_ERRNO_NONE)
-    {
+
+    // x-amzn-fragment-timecode-type header
+    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_FRAG_T_TYPE)) != NULL &&
+        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_FRAG_T_TYPE, pcVal) != KVS_ERRNO_NONE) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if (
-        (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_PRODUCER_START_T)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_PRODUCER_START_T, pcVal) != KVS_ERRNO_NONE)
-    {
+
+    // x-amzn-producer-start-timestamp header
+    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_PRODUCER_START_T)) != NULL &&
+        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_PRODUCER_START_T, pcVal) != KVS_ERRNO_NONE) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if (
-        (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_STREAM_NAME)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_STREAM_NAME, pcVal) != KVS_ERRNO_NONE)
-    {
+
+    // x-amzn-stream-name header
+    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_STREAM_NAME)) != NULL &&
+        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_STREAM_NAME, pcVal) != KVS_ERRNO_NONE) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if (AwsSigV4_AddCanonicalBody(xAwsSigV4Handle, pcHttpBody, strlen(pcHttpBody)) != KVS_ERRNO_NONE)
-    {
+
+    // Add body to canonical request
+    if (AwsSigV4_AddCanonicalBody(xAwsSigV4Handle, pcHttpBody, strlen(pcHttpBody)) != KVS_ERRNO_NONE) {
         res = KVS_ERRNO_FAIL;
     }
-    else if ((res = AwsSigV4_Sign(xAwsSigV4Handle, pServPara->pcAccessKey, pServPara->pcSecretKey, pServPara->pcRegion, pServPara->pcService, pcXAmzDate)) != KVS_ERRNO_NONE)
-    {
+
+    // Sign the request
+    if ((res = AwsSigV4_Sign(xAwsSigV4Handle, pServPara->pcAccessKey, pServPara->pcSecretKey, pServPara->pcRegion, pServPara->pcService, pcXAmzDate)) != KVS_ERRNO_NONE) {
         /* Propagate the res error */
-    }
-    else
-    {
-        /* nop */
     }
 
     if (res != KVS_ERRNO_NONE)
