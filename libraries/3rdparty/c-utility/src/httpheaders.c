@@ -10,6 +10,8 @@
 #include "azure_c_shared_utility/crt_abstractions.h"
 #include "azure_c_shared_utility/xlogging.h"
 
+
+
 MU_DEFINE_ENUM_STRINGS(HTTP_HEADERS_RESULT, HTTP_HEADERS_RESULT_VALUES);
 
 typedef struct HTTP_HEADERS_HANDLE_DATA_TAG

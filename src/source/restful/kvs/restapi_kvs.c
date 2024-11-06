@@ -41,13 +41,15 @@
 #include "net/http_helper.h"
 #include "net/netio.h"
 
+#include "kvs/zephyr_fixes.h"
+
 LOG_MODULE_REGISTER(restapi, LOG_LEVEL_DBG);
 
 #ifndef SAFE_FREE
 #define SAFE_FREE(a) \
     do               \
     {                \
-        kvsFree(a);  \
+        k_free(a);  \
         a = NULL;    \
     } while (0)
 #endif /* SAFE_FREE */
@@ -1424,4 +1426,177 @@ int Kvs_putMediaReadFragmentAck(PutMediaHandle xPutMediaHandle, ePutMediaFragmen
     }
 
     return res;
+}
+
+#include "kvs/test_sigv4.h"
+
+void test_check_signature()
+{
+    char pcAccessKey[] = "AKIDEXAMPLE";
+    char pcSecretKey[] = "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY";
+    char pcRegion[] = "us-east-1";
+    char pcService[] = "kinesisvideo";
+    char pcStreamName[] = "exampleStreamName";  
+    char pcHost[] = "kinesisvideo.us-east-1.amazonaws.com";
+    char pcToken = NULL;
+    char pcHttpMethod[] = "GET";
+    char pcUri[] = "/test.txt";
+    char pcBody[] = "";
+    
+    char pcXAmzDate[DATE_TIME_ISO_8601_FORMAT_STRING_SIZE] = "20130524T000000Z";
+
+    AwsSigV4Handle xAwsSigV4Handle = NULL;
+
+    unsigned int uHttpStatusCode = 0;
+    HTTP_HEADERS_HANDLE xHttpReqHeaders = NULL;
+    
+    STRING_HANDLE xStHttpBody = NULL;
+    STRING_HANDLE xStContentLength = NULL;
+
+    KvsServiceParameter_t xServPara = {
+        .pcHost = pcHost,
+        .pcRegion = pcRegion,
+        .pcService = pcService,
+        .pcAccessKey = pcAccessKey,
+        .pcSecretKey = pcSecretKey,
+        .pcToken = pcToken,
+        .uRecvTimeoutMs = 1000,
+        .uSendTimeoutMs = 1000
+    };
+
+    int res = KVS_ERRNO_NONE;
+
+    if (
+        (xStHttpBody = STRING_construct_sprintf(DESCRIBE_STREAM_HTTP_BODY_TEMPLATE, pcStreamName)) == NULL ||
+        (xStContentLength = STRING_construct_sprintf("%u", STRING_length(xStHttpBody))) == NULL)
+    {
+        res = KVS_ERROR_UNABLE_TO_ALLOCATE_HTTP_BODY;
+        LogError("Failed to allocate HTTP body");
+    }
+    else if (
+        (xHttpReqHeaders = HTTPHeaders_Alloc()) == NULL || 
+        HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_HOST, pcHost) != HTTP_HEADERS_OK ||
+        HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_ACCEPT, VAL_ACCEPT_ANY) != HTTP_HEADERS_OK ||
+        HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_CONTENT_LENGTH, STRING_c_str(xStContentLength)) != HTTP_HEADERS_OK ||
+        HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_CONTENT_TYPE, VAL_CONTENT_TYPE_APPLICATION_jSON) != HTTP_HEADERS_OK ||
+        HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_USER_AGENT, VAL_USER_AGENT) != HTTP_HEADERS_OK ||
+        HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_X_AMZ_DATE, pcXAmzDate) != HTTP_HEADERS_OK ||
+        (pcToken != NULL && (HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_X_AMZ_SECURITY_TOKEN, pcToken) != HTTP_HEADERS_OK)))
+    {
+        res = KVS_ERROR_UNABLE_TO_GENERATE_HTTP_HEADER;
+        LogError("Failed to generate HTTP headers");
+    }
+    else if (
+        (xAwsSigV4Handle = prvSign(&xServPara, KVS_URI_DESCRIBE_STREAM, URI_QUERY_EMPTY, xHttpReqHeaders, STRING_c_str(xStHttpBody))) == NULL ||
+        HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_AUTHORIZATION, AwsSigV4_GetAuthorization(xAwsSigV4Handle)) != HTTP_HEADERS_OK)
+    {
+        res = KVS_ERROR_FAIL_TO_SIGN_HTTP_REQ;
+        LogError("Failed to sign");
+    }
+
+    size_t uHeadersCnt = 0;
+    size_t i = 0;
+    char *pcHeader = NULL;
+    size_t reqSize = 0;
+    char *xStHttpReq = NULL;
+
+    LOG_DBG("Generating HTTP request");
+
+    if (HTTPHeaders_GetHeaderCount(xHttpReqHeaders, &uHeadersCnt) != HTTP_HEADERS_OK)
+    {
+        res = KVS_ERROR_UNABLE_TO_GET_HTTP_HEADER_COUNT;
+    }
+    else
+    {
+        // Calculate initial size for the HTTP request string (method + URI + HTTP version + CRLF + CRLF)
+        //reqSize = strlen(pcHttpMethod) + strlen(pcUri) + strlen(" HTTP/1.1\r\n\r\n") + 1;
+        reqSize = strlen(pcHttpMethod) + strlen(pcUri) + strlen(" HTTP/1.1\r\n") + 2;
+        xStHttpReq = (char *)k_malloc(reqSize);
+        
+        if (xStHttpReq == NULL)
+        {
+            res = KVS_ERROR_C_UTIL_STRING_ERROR;
+        }
+        else
+        {
+            // Format the initial HTTP request line
+            snprintf(xStHttpReq, reqSize, "%s %s HTTP/1.1\r\n", pcHttpMethod, pcUri);
+            LOG_DBG("Initial HTTP request line: %s", xStHttpReq);
+
+            for (i = 0; i < uHeadersCnt && res == KVS_ERRNO_NONE; i++)
+            {
+                if (HTTPHeaders_GetHeader(xHttpReqHeaders, i, &pcHeader) != HTTP_HEADERS_OK)
+                {
+                    res = KVS_ERROR_UNABLE_TO_GET_HTTP_HEADER;
+                }
+                else
+                {
+                    size_t headerLen = strlen(pcHeader) + strlen("\r\n") + 1;
+                    reqSize += headerLen;
+
+                    // Reallocate memory for the growing request string
+                    char *newReq = (char *)k_realloc(xStHttpReq, reqSize);
+                    if (newReq == NULL)
+                    {
+                        res = KVS_ERROR_C_UTIL_STRING_ERROR;
+                        free(pcHeader);
+                        break;
+                    }
+
+                    xStHttpReq = newReq;
+                    strcat(xStHttpReq, pcHeader);
+                    strcat(xStHttpReq, "\r\n");
+
+                    /* pcHeader was created by HTTPHeaders_GetHeader via malloc */
+                    free(pcHeader);
+                }
+            }
+
+            if (res == KVS_ERRNO_NONE)
+            {
+                reqSize += strlen("\r\n") + 2;
+                char *newReq = (char *)k_realloc(xStHttpReq, reqSize);
+                if (newReq == NULL)
+                {
+                    res = KVS_ERROR_C_UTIL_STRING_ERROR;
+                }
+                else
+                {
+                    xStHttpReq = newReq;
+                    strcat(xStHttpReq, "\r\n");
+
+                    if (strlen(pcBody) > 0)
+                    {
+                        reqSize += strlen(pcBody) + 1;
+                        newReq = (char *)k_realloc(xStHttpReq, reqSize);
+                        if (newReq == NULL)
+                        {
+                            res = KVS_ERROR_C_UTIL_STRING_ERROR;
+                        }
+                        else
+                        {
+                            xStHttpReq = newReq;
+                            strcat(xStHttpReq, pcBody);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (res == KVS_ERRNO_NONE)
+    {
+      // Print out the generated HTTP request
+      LOG_DBG("Generated HTTP request");
+      LOG_DBG("\r\n%s", xStHttpReq);
+      //LOG_HEXDUMP_DBG(xStHttpReq, strlen(xStHttpReq), "HTTP Request");
+      LOG_INF("String Handle: %s", xStHttpReq);
+    }
+    else
+    {
+      LOG_ERR("Failed to generate HTTP request");
+        k_free(xStHttpReq);
+        xStHttpReq = NULL;
+    }
+
 }

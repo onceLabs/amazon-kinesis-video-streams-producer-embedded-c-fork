@@ -55,6 +55,7 @@ set(LIB_SRC
     ${LIB_DIR}/source/transport/sockets_zephyr.c
     ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include/mbedtls/ctr_drbg.h
     ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include/mbedtls/entropy.h
+    ${LIB_DIR}/source/os/zephyr_fixes.c
 )
 
 set(LIB_PUB_INC
