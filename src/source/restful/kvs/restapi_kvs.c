@@ -202,6 +202,18 @@ static AwsSigV4Handle prvSign(KvsServiceParameter_t *pServPara, char *pcUri, cha
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
 
+    // range header - for testing
+    #define HDR_RANGE "range"
+    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_RANGE)) != NULL && AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_RANGE, pcVal) != KVS_ERRNO_NONE) {
+        res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
+    }
+
+    // x-amz-content-sha256 header
+    #define HDR_X_AMZ_CONTENT_SHA256 "x-amz-content-sha256"
+    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZ_CONTENT_SHA256)) != NULL && AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZ_CONTENT_SHA256, pcVal) != KVS_ERRNO_NONE) {
+        res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
+    }
+
     // x-amz-date header
     if ((pcXAmzDate = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZ_DATE)) != NULL &&
         AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZ_DATE, pcXAmzDate) != KVS_ERRNO_NONE) {
@@ -1428,17 +1440,51 @@ int Kvs_putMediaReadFragmentAck(PutMediaHandle xPutMediaHandle, ePutMediaFragmen
     return res;
 }
 
+/** Testing situation from https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-header-based-auth.html
+ * 
+ *  Canonical Request:      ---------------------------------------------------------------|----------------------------
+ *  GET                                                                                     VERB
+ *  /test.txt                                                                               URI
+ * 
+ *  host:examplebucket.s3.amazonaws.com                                                     host
+ *  range:bytes=0-9                                                                         range
+ *  x-amz-content-sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855   empty body sha256
+ *  x-amz-date:20130524T000000Z                                                             x-amz-date
+ *
+ *  host;range;x-amz-content-sha256;x-amz-date                                              signed headers
+ *  e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855                        hashed payload
+ * ----------------------------------------------------------------------------------------|----------------------------
+ * 
+ *  String To Sign:         ---------------------------------------------------------------|----------------------------
+ *  AWS4-HMAC-SHA256                                                                        Algorithm
+ *  20130524T000000Z                                                                        Request date
+ *  20130524/us-east-1/s3/aws4_request                                                      Scope
+ *  7344ae5b7ee6c3e7e6b0fe0640412a37625d1fbfff95c48bbb2dc43964946972                        Hashed Canonical Request
+ * ----------------------------------------------------------------------------------------|----------------------------
+ * 
+ *  Signing Key:            ---------------------------------------------------------------|----------------------------
+ *  DateKey               = HMAC-SHA256("AWS4" + "<SecretAccessKey>", "20130524")         = 1859675a70a0a0eedaf980cedb4ca37b8d1fe596b0ea3c21fe8729d5148d03fc    68896419206d6240ad4cd7dc8ba658efbf3b43b53041950083a10833824fcfbb
+ *  DateRegionKey         = HMAC-SHA256(<DateKey>, "us-east-1")                           = 10c2b5b2a694f813134bf67e29cf4860a19c9ba855f0f9d66d5041897d258674    b1d69b01d01fbfab62ce62e2b354dc81fa797232685c3de02919930c87f3db5d
+ *  DateRegionServiceKey  = HMAC-SHA256(<DateRegionKey>, "s3")                            = 0752acc01880b845bc697bb359de3f186f21c78498a0f6f2cd392d382a9f5f06    ec603b02e46102b2c2563dd47216472c5c0aba27edeb8308255e4c60bb07bda0
+ *  SigningKey            = HMAC-SHA256(<DateRegionServiceKey>, "aws4_request")           = f0964526f1f568b2b0d4b9f98eafe032297dcff14dfecadf740a143ff3a7dcc4    d949da6fe2897897d73557446db35c06dc34feb7f74e7d949c6fe9d674a02103
+ * ----------------------------------------------------------------------------------------|----------------------------
+ * 
+ *  Signature:              ---------------------------------------------------------------|----------------------------
+ *  Signature             = HexEncode(HMAC-SHA256(<SigningKey>, <StringToSign>))          = <Signature>
+ */
+
 #include "kvs/test_sigv4.h"
+#define EMPTY_BODY_SHA265 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+#define TEST_AWS_ACCESS_KEY "AKIAIOSFODNN7EXAMPLE"
+#define TEST_AWS_SECRET_KEY "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
 void test_check_signature()
 {
-    char pcAccessKey[] = "AKIDEXAMPLE";
-    char pcSecretKey[] = "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY";
     char pcRegion[] = "us-east-1";
-    char pcService[] = "kinesisvideo";
+    char pcService[] = "s3";
     char pcStreamName[] = "exampleStreamName";  
-    char pcHost[] = "kinesisvideo.us-east-1.amazonaws.com";
-    char pcToken = NULL;
+    char pcHost[] = "examplebucket.s3.amazonaws.com";
+    char *pcToken = NULL;
     char pcHttpMethod[] = "GET";
     char pcUri[] = "/test.txt";
     char pcBody[] = "";
@@ -1447,7 +1493,6 @@ void test_check_signature()
 
     AwsSigV4Handle xAwsSigV4Handle = NULL;
 
-    unsigned int uHttpStatusCode = 0;
     HTTP_HEADERS_HANDLE xHttpReqHeaders = NULL;
     
     STRING_HANDLE xStHttpBody = NULL;
@@ -1457,8 +1502,8 @@ void test_check_signature()
         .pcHost = pcHost,
         .pcRegion = pcRegion,
         .pcService = pcService,
-        .pcAccessKey = pcAccessKey,
-        .pcSecretKey = pcSecretKey,
+        .pcAccessKey = TEST_AWS_ACCESS_KEY,
+        .pcSecretKey = TEST_AWS_SECRET_KEY,
         .pcToken = pcToken,
         .uRecvTimeoutMs = 1000,
         .uSendTimeoutMs = 1000
@@ -1476,10 +1521,12 @@ void test_check_signature()
     else if (
         (xHttpReqHeaders = HTTPHeaders_Alloc()) == NULL || 
         HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_HOST, pcHost) != HTTP_HEADERS_OK ||
-        HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_ACCEPT, VAL_ACCEPT_ANY) != HTTP_HEADERS_OK ||
-        HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_CONTENT_LENGTH, STRING_c_str(xStContentLength)) != HTTP_HEADERS_OK ||
-        HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_CONTENT_TYPE, VAL_CONTENT_TYPE_APPLICATION_jSON) != HTTP_HEADERS_OK ||
-        HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_USER_AGENT, VAL_USER_AGENT) != HTTP_HEADERS_OK ||
+        //HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_ACCEPT, VAL_ACCEPT_ANY) != HTTP_HEADERS_OK ||
+        //HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_CONTENT_LENGTH, STRING_c_str(xStContentLength)) != HTTP_HEADERS_OK ||
+        //HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_CONTENT_TYPE, VAL_CONTENT_TYPE_APPLICATION_jSON) != HTTP_HEADERS_OK ||
+        //HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_USER_AGENT, VAL_USER_AGENT) != HTTP_HEADERS_OK ||
+        HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, "range", "bytes=0-9") != HTTP_HEADERS_OK ||
+        HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, "x-amz-content-sha256", EMPTY_BODY_SHA265) != HTTP_HEADERS_OK ||
         HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_X_AMZ_DATE, pcXAmzDate) != HTTP_HEADERS_OK ||
         (pcToken != NULL && (HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_X_AMZ_SECURITY_TOKEN, pcToken) != HTTP_HEADERS_OK)))
     {
@@ -1487,7 +1534,7 @@ void test_check_signature()
         LogError("Failed to generate HTTP headers");
     }
     else if (
-        (xAwsSigV4Handle = prvSign(&xServPara, KVS_URI_DESCRIBE_STREAM, URI_QUERY_EMPTY, xHttpReqHeaders, STRING_c_str(xStHttpBody))) == NULL ||
+        (xAwsSigV4Handle = prvSign(&xServPara, pcUri, URI_QUERY_EMPTY, xHttpReqHeaders, STRING_c_str(xStHttpBody))) == NULL ||
         HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_AUTHORIZATION, AwsSigV4_GetAuthorization(xAwsSigV4Handle)) != HTTP_HEADERS_OK)
     {
         res = KVS_ERROR_FAIL_TO_SIGN_HTTP_REQ;
