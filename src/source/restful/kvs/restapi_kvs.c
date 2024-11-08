@@ -804,6 +804,10 @@ int Kvs_describeStream(KvsServiceParameter_t *pServPara, KvsDescribeStreamParame
             // LogInfo("Describe Stream failed, HTTP status code: %u", uHttpStatusCode);
             LOG_WRN("Describe Stream failed, HTTP status code: %u", uHttpStatusCode);
             LogInfo("HTTP response message:%.*s", (int)uRspBodyLen, pRspBody);
+        } else {
+            // LogInfo("Describe Stream success, HTTP status code: %u", uHttpStatusCode);
+            LOG_INF("Describe Stream success, HTTP status code: %u", uHttpStatusCode);
+            LogInfo("HTTP response message:%.*s", (int)uRspBodyLen, pRspBody);
         }
     }
 
@@ -1463,9 +1467,9 @@ int Kvs_putMediaReadFragmentAck(PutMediaHandle xPutMediaHandle, ePutMediaFragmen
  * ----------------------------------------------------------------------------------------|----------------------------
  * 
  *  Signing Key:            ---------------------------------------------------------------|----------------------------
- *  DateKey               = HMAC-SHA256("AWS4" + "<SecretAccessKey>", "20130524")         = 1859675a70a0a0eedaf980cedb4ca37b8d1fe596b0ea3c21fe8729d5148d03fc    68896419206d6240ad4cd7dc8ba658efbf3b43b53041950083a10833824fcfbb
- *  DateRegionKey         = HMAC-SHA256(<DateKey>, "us-east-1")                           = 10c2b5b2a694f813134bf67e29cf4860a19c9ba855f0f9d66d5041897d258674    b1d69b01d01fbfab62ce62e2b354dc81fa797232685c3de02919930c87f3db5d
- *  DateRegionServiceKey  = HMAC-SHA256(<DateRegionKey>, "s3")                            = 0752acc01880b845bc697bb359de3f186f21c78498a0f6f2cd392d382a9f5f06    ec603b02e46102b2c2563dd47216472c5c0aba27edeb8308255e4c60bb07bda0
+ *  DateKey               = HMAC-SHA256("AWS4" + "<SecretAccessKey>", "20130524")         = 4fe8c47cd276b4c7e04c1e8a7f5923062e61ba0399dc89c93998486a3dc0bc9f    1859675a70a0a0eedaf980cedb4ca37b8d1fe596b0ea3c21fe8729d5148d03fc    68896419206d6240ad4cd7dc8ba658efbf3b43b53041950083a10833824fcfbb
+ *  DateRegionKey         = HMAC-SHA256(<DateKey>, "us-east-1")                           = 36568e2661f2b80f63df5e8a366b318f3df8959d968c4c27ccf1ead86c66b929    10c2b5b2a694f813134bf67e29cf4860a19c9ba855f0f9d66d5041897d258674    b1d69b01d01fbfab62ce62e2b354dc81fa797232685c3de02919930c87f3db5d
+ *  DateRegionServiceKey  = HMAC-SHA256(<DateRegionKey>, "s3")                            = ad7e51781a15ef9302d0ad6e012b8c75de2c7f3a67f23c51e99026570219db71    0752acc01880b845bc697bb359de3f186f21c78498a0f6f2cd392d382a9f5f06    ec603b02e46102b2c2563dd47216472c5c0aba27edeb8308255e4c60bb07bda0
  *  SigningKey            = HMAC-SHA256(<DateRegionServiceKey>, "aws4_request")           = f0964526f1f568b2b0d4b9f98eafe032297dcff14dfecadf740a143ff3a7dcc4    d949da6fe2897897d73557446db35c06dc34feb7f74e7d949c6fe9d674a02103
  * ----------------------------------------------------------------------------------------|----------------------------
  * 

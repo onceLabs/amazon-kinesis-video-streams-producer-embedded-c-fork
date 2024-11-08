@@ -395,32 +395,32 @@ int AwsSigV4_Sign(AwsSigV4Handle xSigV4Handle, char *pcAccessKey, char *pcSecret
 
     /* Calculate the HMAC of date, region, service, signature end, and signed string*/
     LOG_DBG("HMAC 0.0: %s, len: %d, date: %s", pHmac, strlen(pHmac), pcXAmzDate);
-    // LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 0");
+    //LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "PecretKy");
     if ((retVal = mbedtls_md_hmac(pxMdInfo, (const unsigned char *)pHmac, strlen(pHmac), (const unsigned char *)pcXAmzDate, SIGNATURE_DATE_STRING_LEN, (unsigned char *)pHmac2)) != 0 ) {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
-    }
-    // LOG_HEXDUMP_DBG(pHmac2, strlen(pHmac2), "HMAC 1");
+    }//495D664318CCE3DE640A8CB5154F7AF9F683E9C8A05F2AEB6DCAB26DE0B3E6D3
+    LOG_HEXDUMP_DBG(pHmac2, strlen(pHmac2), "DateKey");
     memset(pHmac, 0, sizeof(pHmac));
     if ((retVal = mbedtls_md_hmac(pxMdInfo, (const unsigned char *)pHmac2, uHmacSize, (const unsigned char *)pcRegion, strlen(pcRegion), (unsigned char *)pHmac)) != 0 ) {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
     }
-    // LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 2");
+    LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "RegionKey");
     memset(pHmac2, 0, sizeof(pHmac2));
     if ((retVal = mbedtls_md_hmac(pxMdInfo, (const unsigned char *)pHmac, uHmacSize, (const unsigned char *)pcService, strlen(pcService), (unsigned char *)pHmac2)) != 0 ) {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
     }
-    // LOG_HEXDUMP_DBG(pHmac2, strlen(pHmac2), "HMAC 3");
+    LOG_HEXDUMP_DBG(pHmac2, strlen(pHmac2), "ServiceKey");
     memset(pHmac, 0, sizeof(pHmac));
     if ((retVal = mbedtls_md_hmac(pxMdInfo, (const unsigned char *)pHmac2, uHmacSize, (const unsigned char *)AWS_SIG_V4_SIGNATURE_END, sizeof(AWS_SIG_V4_SIGNATURE_END) - 1, (unsigned char *)pHmac)) != 0 ) {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
     }
-    // LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "HMAC 4");
+    LOG_HEXDUMP_DBG(pHmac, strlen(pHmac), "SigningKey");
     memset(pHmac2, 0, sizeof(pHmac2));
     if ((retVal = mbedtls_md_hmac(pxMdInfo, (const unsigned char *)pHmac, uHmacSize, (const unsigned char *)STRING_c_str(xStSignedStr), STRING_length(xStSignedStr), (unsigned char *)pHmac2)) != 0)
     {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
     }
-    // LOG_HEXDUMP_DBG(pHmac2, strlen(pHmac2), "HMAC 5");
+    LOG_HEXDUMP_DBG(pHmac2, strlen(pHmac2), "Signature");
 
 
     if (res == KVS_ERRNO_NONE) {
