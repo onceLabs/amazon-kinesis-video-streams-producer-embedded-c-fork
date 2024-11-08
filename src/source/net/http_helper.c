@@ -110,7 +110,7 @@ static int prvGenerateHttpReq(const char *pcHttpMethod, const char *pcUri, HTTP_
                     if (newReq == NULL)
                     {
                         res = KVS_ERROR_C_UTIL_STRING_ERROR;
-                        free(pcHeader);
+                        k_free(pcHeader);
                         break;
                     }
 
@@ -266,7 +266,7 @@ int Http_executeHttpReq(NetIoHandle xNetIoHandle, const char *pcHttpMethod, cons
     }
 
     k_free(xStHttpReq);
-    //STRING_delete(xStHttpReq);
+    //STRING_delete(xStHttpReq); // TODO is this needed? fix if so
 
     return res;
 }
