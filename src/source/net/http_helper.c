@@ -335,7 +335,7 @@ int Http_recvHttpRsp(NetIoHandle xNetIoHandle, unsigned int *puHttpStatus, char 
                     res = KVS_ERRNO_NONE;
                     *puHttpStatus = uHttpStatusCode;
 
-                    if ((pRspBody = (char *)kvsMalloc(uBodyLen + 1)) == NULL)
+                    if ((pRspBody = (char *)k_malloc(uBodyLen + 1)) == NULL)
                     {
                         res = KVS_ERROR_OUT_OF_MEMORY;
                         LogError("OOM pRspBody");

@@ -36,7 +36,7 @@ static int BUFFER_safemalloc(BUFFER* handleptr, size_t size)
     {
         sizetomalloc = 1;
     }
-    handleptr->buffer = (unsigned char*)malloc(sizetomalloc);
+    handleptr->buffer = (unsigned char*)k_malloc(sizetomalloc);
     if (handleptr->buffer == NULL)
     {
         /*Codes_SRS_BUFFER_02_003: [If allocating memory fails, then BUFFER_create shall return NULL.]*/
@@ -64,7 +64,7 @@ BUFFER_HANDLE BUFFER_create(const unsigned char* source, size_t size)
     else
     {
         /*Codes_SRS_BUFFER_02_002: [Otherwise, BUFFER_create shall allocate memory to hold size bytes and shall copy from source size bytes into the newly allocated memory.] */
-        result = (BUFFER*)calloc(1, sizeof(BUFFER));
+        result = (BUFFER*)k_calloc(1, sizeof(BUFFER));
         if (result == NULL)
         {
             /*Codes_SRS_BUFFER_02_003: [If allocating memory fails, then BUFFER_create shall return NULL.] */
@@ -77,7 +77,7 @@ BUFFER_HANDLE BUFFER_create(const unsigned char* source, size_t size)
             if (BUFFER_safemalloc(result, size) != 0)
             {
                 LogError("unable to BUFFER_safemalloc ");
-                free(result);
+                k_free(result);
                 result = NULL;
             }
             else
@@ -94,7 +94,7 @@ BUFFER_HANDLE BUFFER_create(const unsigned char* source, size_t size)
 BUFFER_HANDLE BUFFER_create_with_size(size_t buff_size)
 {
     BUFFER* result;
-    result = (BUFFER*)calloc(1, sizeof(BUFFER));
+    result = (BUFFER*)k_calloc(1, sizeof(BUFFER));
     if (result != NULL)
     {
         if (buff_size == 0)
@@ -107,11 +107,11 @@ BUFFER_HANDLE BUFFER_create_with_size(size_t buff_size)
         {
             // Codes_SRS_BUFFER_07_031: [ BUFFER_create_with_size shall allocate a buffer of buff_size. ]
             result->size = buff_size;
-            if ((result->buffer = (unsigned char*)malloc(result->size)) == NULL)
+            if ((result->buffer = (unsigned char*)k_malloc(result->size)) == NULL)
             {
                 // Codes_SRS_BUFFER_07_032: [ If allocating memory fails, then BUFFER_create_with_size shall return NULL. ]
                 LogError("unable to allocate buffer");
-                free(result);
+                k_free(result);
                 result = NULL;
             }
         }
@@ -135,9 +135,9 @@ void BUFFER_delete(BUFFER_HANDLE handle)
         if (b->buffer != NULL)
         {
             /* Codes_SRS_BUFFER_07_003: [BUFFER_delete shall delete the data associated with the BUFFER_HANDLE along with the Buffer.] */
-            free(b->buffer);
+            k_free(b->buffer);
         }
-        free(b);
+        k_free(b);
     }
 }
 
@@ -157,7 +157,7 @@ int BUFFER_build(BUFFER_HANDLE handle, const unsigned char* source, size_t size)
     {
         /* Codes_SRS_BUFFER_01_003: [If size is zero, source can be NULL.] */
         BUFFER* b = (BUFFER*)handle;
-        free(b->buffer);
+        k_free(b->buffer);
         b->buffer = NULL;
         b->size = 0;
 
@@ -174,7 +174,7 @@ int BUFFER_build(BUFFER_HANDLE handle, const unsigned char* source, size_t size)
         {
             BUFFER* b = (BUFFER*)handle;
             /* Codes_SRS_BUFFER_07_011: [BUFFER_build shall overwrite previous contents if the buffer has been previously allocated.] */
-            unsigned char* newBuffer = (unsigned char*)realloc(b->buffer, size);
+            unsigned char* newBuffer = (unsigned char*)k_realloc(b->buffer, size);
             if (newBuffer == NULL)
             {
                 /* Codes_SRS_BUFFER_07_010: [BUFFER_build shall return nonzero if any error is encountered.] */
@@ -227,7 +227,7 @@ int BUFFER_append_build(BUFFER_HANDLE handle, const unsigned char* source, size_
         else
         {
             /* Codes_SRS_BUFFER_07_032: [ if handle->buffer is not NULL BUFFER_append_build shall realloc the buffer to be the handle->size + size ] */
-            unsigned char* temp = (unsigned char*)realloc(handle->buffer, handle->size + size);
+            unsigned char* temp = (unsigned char*)k_realloc(handle->buffer, handle->size + size);
             if (temp == NULL)
             {
                 /* Codes_SRS_BUFFER_07_035: [ If any error is encountered BUFFER_append_build shall return a non-null value. ] */
@@ -276,7 +276,7 @@ int BUFFER_pre_build(BUFFER_HANDLE handle, size_t size)
         }
         else
         {
-            if ((b->buffer = (unsigned char*)malloc(size)) == NULL)
+            if ((b->buffer = (unsigned char*)k_malloc(size)) == NULL)
             {
                 /* Codes_SRS_BUFFER_07_013: [BUFFER_pre_build shall return nonzero if any error is encountered.] */
                 LogError("Failure allocating buffer");
@@ -326,7 +326,7 @@ extern int BUFFER_unbuild(BUFFER_HANDLE handle)
         BUFFER* b = (BUFFER*)handle;
         if (b->buffer != NULL)
         {
-            free(b->buffer);
+            k_free(b->buffer);
             b->buffer = NULL;
             b->size = 0;
         
@@ -357,7 +357,7 @@ int BUFFER_enlarge(BUFFER_HANDLE handle, size_t enlargeSize)
     else
     {
         BUFFER* b = (BUFFER*)handle;
-        unsigned char* temp = (unsigned char*)realloc(b->buffer, b->size + enlargeSize);
+        unsigned char* temp = (unsigned char*)k_realloc(b->buffer, b->size + enlargeSize);
         if (temp == NULL)
         {
             /* Codes_SRS_BUFFER_07_018: [BUFFER_enlarge shall return a nonzero result if any error is encountered.] */
@@ -402,14 +402,14 @@ int BUFFER_shrink(BUFFER_HANDLE handle, size_t decreaseSize, bool fromEnd)
         if (alloc_size == 0)
         {
             /* Codes_SRS_BUFFER_07_043: [ If the decreaseSize is equal the buffer size , BUFFER_shrink shall deallocate the buffer and set the size to zero. ] */
-            free(handle->buffer);
+            k_free(handle->buffer);
             handle->buffer = NULL;
             handle->size = 0;
             result = 0;
         }
         else
         {
-            unsigned char* tmp = malloc(alloc_size);
+            unsigned char* tmp = k_malloc(alloc_size);
             if (tmp == NULL)
             {
                 /* Codes_SRS_BUFFER_07_042: [ If a failure is encountered, BUFFER_shrink shall return a non-null value ] */
@@ -422,7 +422,7 @@ int BUFFER_shrink(BUFFER_HANDLE handle, size_t decreaseSize, bool fromEnd)
                 {
                     /* Codes_SRS_BUFFER_07_040: [ if the fromEnd variable is true, BUFFER_shrink shall remove the end of the buffer of size decreaseSize. ] */
                     memcpy(tmp, handle->buffer, alloc_size);
-                    free(handle->buffer);
+                    k_free(handle->buffer);
                     handle->buffer = tmp;
                     handle->size = alloc_size;
                     result = 0;
@@ -431,7 +431,7 @@ int BUFFER_shrink(BUFFER_HANDLE handle, size_t decreaseSize, bool fromEnd)
                 {
                     /* Codes_SRS_BUFFER_07_041: [ if the fromEnd variable is false, BUFFER_shrink shall remove the beginning of the buffer of size decreaseSize. ] */
                     memcpy(tmp, handle->buffer + decreaseSize, alloc_size);
-                    free(handle->buffer);
+                    k_free(handle->buffer);
                     handle->buffer = tmp;
                     handle->size = alloc_size;
                     result = 0;
@@ -493,7 +493,7 @@ int BUFFER_append(BUFFER_HANDLE handle1, BUFFER_HANDLE handle2)
             else
             {
                 // b2->size != 0, whatever b1->size is
-                unsigned char* temp = (unsigned char*)realloc(b1->buffer, b1->size + b2->size);
+                unsigned char* temp = (unsigned char*)k_realloc(b1->buffer, b1->size + b2->size);
                 if (temp == NULL)
                 {
                     /* Codes_SRS_BUFFER_07_023: [BUFFER_append shall return a nonzero upon any error that is encountered.] */
@@ -553,7 +553,7 @@ int BUFFER_prepend(BUFFER_HANDLE handle1, BUFFER_HANDLE handle2)
             else
             {
                 // b2->size != 0
-                unsigned char* temp = (unsigned char*)malloc(b1->size + b2->size);
+                unsigned char* temp = (unsigned char*)k_malloc(b1->size + b2->size);
                 if (temp == NULL)
                 {
                     /* Codes_SRS_BUFFER_01_005: [ BUFFER_prepend shall return a non-zero upon value any error that is encountered. ]*/
@@ -567,7 +567,7 @@ int BUFFER_prepend(BUFFER_HANDLE handle1, BUFFER_HANDLE handle2)
                     (void)memcpy(temp, b2->buffer, b2->size);
                     // start from b1->size to append b1
                     (void)memcpy(&temp[b2->size], b1->buffer, b1->size);
-                    free(b1->buffer);
+                    k_free(b1->buffer);
                     b1->buffer = temp;
                     b1->size += b2->size;
                     result = 0;
@@ -647,12 +647,12 @@ BUFFER_HANDLE BUFFER_clone(BUFFER_HANDLE handle)
     else
     {
         BUFFER* suppliedBuff = (BUFFER*)handle;
-        BUFFER* b = (BUFFER*)calloc(1, sizeof(BUFFER));
+        BUFFER* b = (BUFFER*)k_calloc(1, sizeof(BUFFER));
         if (b != NULL)
         {
             if (BUFFER_safemalloc(b, suppliedBuff->size) != 0)
             {
-                free(b);
+                k_free(b);
                 LogError("Failure: allocating temp buffer.");
                 result = NULL;
             }

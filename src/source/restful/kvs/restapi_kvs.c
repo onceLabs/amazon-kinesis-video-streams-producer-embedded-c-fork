@@ -801,6 +801,7 @@ int Kvs_describeStream(KvsServiceParameter_t *pServPara, KvsDescribeStreamParame
 
         if (uHttpStatusCode != 200)
         {
+            res = KVS_ERRNO_FAIL; // TODO - need to define error code
             // LogInfo("Describe Stream failed, HTTP status code: %u", uHttpStatusCode);
             LOG_WRN("Describe Stream failed, HTTP status code: %u", uHttpStatusCode);
             LogInfo("HTTP response message:%.*s", (int)uRspBodyLen, pRspBody);
@@ -1454,6 +1455,8 @@ int Kvs_putMediaReadFragmentAck(PutMediaHandle xPutMediaHandle, ePutMediaFragmen
  *  host;range;x-amz-content-sha256;x-amz-date                                              signed headers
  *  e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855                        hashed payload
  * ----------------------------------------------------------------------------------------|----------------------------
+ *  Canonical Request Hash given:       7344ae5b7ee6c3e7e6b0fe0640412a37625d1fbfff95c48bbb2dc43964946972
+ *  Canonical Request Hash ours:        7344ae5b7ee6c3e7e6b0fe0640412a37625d1fbfff95c48bbb2dc43964946972
  * 
  *  String To Sign:         ---------------------------------------------------------------|----------------------------
  *  AWS4-HMAC-SHA256                                                                        Algorithm
@@ -1468,8 +1471,9 @@ int Kvs_putMediaReadFragmentAck(PutMediaHandle xPutMediaHandle, ePutMediaFragmen
  *  DateRegionServiceKey  = HMAC-SHA256(<DateRegionKey>, "s3")                            = 0752acc01880b845bc697bb359de3f186f21c78498a0f6f2cd392d382a9f5f06    ec603b02e46102b2c2563dd47216472c5c0aba27edeb8308255e4c60bb07bda0
  *  SigningKey            = HMAC-SHA256(<DateRegionServiceKey>, "aws4_request")           = f0964526f1f568b2b0d4b9f98eafe032297dcff14dfecadf740a143ff3a7dcc4    d949da6fe2897897d73557446db35c06dc34feb7f74e7d949c6fe9d674a02103
  * ----------------------------------------------------------------------------------------|----------------------------
- * 
+ *                                                                                          ff560d1d0fb1bfe972844b2029d69193db4ff13add26e9c5fbd2dae52ffd65ac    7553b766519d7713ec5cea28f8d295a6f5b5a98df23365363ef8183296c74071
  *  Signature:              ---------------------------------------------------------------|----------------------------
+ *  Signature             = HexEncode(HMAC-SHA256(<SigningKey>, <StringToSign>))          = f0e8bdb87c964420e857bd35b5d6ed310bd44f0170aba48dd91039c6036bdb41
  *  Signature             = HexEncode(HMAC-SHA256(<SigningKey>, <StringToSign>))          = <Signature>
  */
 
