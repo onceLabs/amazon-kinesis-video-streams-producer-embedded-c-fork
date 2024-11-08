@@ -119,7 +119,7 @@ static int prvGenerateHttpReq(const char *pcHttpMethod, const char *pcUri, HTTP_
                     strcat(xStHttpReq, "\r\n");
 
                     /* pcHeader was created by HTTPHeaders_GetHeader via malloc */
-                    free(pcHeader);
+                    k_free(pcHeader);
                 }
             }
 

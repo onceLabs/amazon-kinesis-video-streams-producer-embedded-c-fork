@@ -9,6 +9,8 @@
 #include "azure_c_shared_utility/optimize_size.h"
 #include "azure_c_shared_utility/xlogging.h"
 
+#include "kvs/zephyr_fixes.h"
+
 typedef struct BUFFER_TAG
 {
     unsigned char* buffer;
