@@ -87,7 +87,7 @@ typedef struct
 typedef struct PutMedia
 {
     //LOCK_HANDLE xLock;
-    struct k_mutex_t *xLockMutex;
+    struct k_mutex *xLockMutex;
 
     NetIoHandle xNetIoHandle;
     DLIST_ENTRY xPendingFragmentAcks;
@@ -678,7 +678,7 @@ static PutMedia_t *prvCreateDefaultPutMediaHandle()
         pPutMedia->xLockMutex = &wrapper_mutex;
         memset(pPutMedia, 0, sizeof(PutMedia_t));
 
-        if (k_mutex_init(pPutMedia->xLockMutex))//(pPutMedia->xLock = Lock_Init()) == NULL)
+        if (k_mutex_init(&(pPutMedia->xLockMutex)))//(pPutMedia->xLock = Lock_Init()) == NULL)
         {
             res = KVS_ERROR_LOCK_ERROR;
             LogError("Failed to initialize lock");
