@@ -9,6 +9,8 @@
 #include "azure_c_shared_utility/xlogging.h"
 #include "azure_c_shared_utility/strings.h"
 
+#include <zephyr/kernel.h>
+
 MU_DEFINE_ENUM_STRINGS(MAP_RESULT, MAP_RESULT_VALUES);
 
 typedef struct MAP_HANDLE_DATA_TAG
