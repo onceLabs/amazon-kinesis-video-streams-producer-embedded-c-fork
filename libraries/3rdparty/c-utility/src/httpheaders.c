@@ -10,6 +10,9 @@
 #include "azure_c_shared_utility/crt_abstractions.h"
 #include "azure_c_shared_utility/xlogging.h"
 
+#include <zephyr/kernel.h>
+
+
 MU_DEFINE_ENUM_STRINGS(HTTP_HEADERS_RESULT, HTTP_HEADERS_RESULT_VALUES);
 
 typedef struct HTTP_HEADERS_HANDLE_DATA_TAG
@@ -296,7 +299,7 @@ HTTP_HEADERS_RESULT HTTPHeaders_GetHeader(HTTP_HEADERS_HANDLE handle, size_t ind
             {
                 size_t keyLen = strlen(keys[index]);
                 size_t valueLen = strlen(values[index]);
-                *destination = (char*)malloc(sizeof(char) * (keyLen + /*COLON_AND_SPACE_LENGTH*/ 2 + valueLen + /*EOL*/ 1));
+                *destination = (char*)k_malloc(sizeof(char) * (keyLen + /*COLON_AND_SPACE_LENGTH*/ 2 + valueLen + /*EOL*/ 1));
                 if (*destination == NULL)
                 {
                     /*Codes_SRS_HTTP_HEADERS_99_034:[ The function shall return HTTP_HEADERS_ERROR when an internal error occurs]*/
@@ -334,7 +337,7 @@ HTTP_HEADERS_HANDLE HTTPHeaders_Clone(HTTP_HEADERS_HANDLE handle)
     else
     {
         /*Codes_SRS_HTTP_HEADERS_02_004: [Otherwise HTTPHeaders_Clone shall clone the content of handle to a new handle.] */
-        result = (HTTP_HEADERS_HANDLE_DATA*)malloc(sizeof(HTTP_HEADERS_HANDLE_DATA));
+        result = (HTTP_HEADERS_HANDLE_DATA*)k_malloc(sizeof(HTTP_HEADERS_HANDLE_DATA));
         if (result == NULL)
         {
             /*Codes_SRS_HTTP_HEADERS_02_005: [If cloning fails for any reason, then HTTPHeaders_Clone shall return NULL.] */
@@ -346,7 +349,7 @@ HTTP_HEADERS_HANDLE HTTPHeaders_Clone(HTTP_HEADERS_HANDLE handle)
             if (result->headers == NULL)
             {
                 /*Codes_SRS_HTTP_HEADERS_02_005: [If cloning fails for any reason, then HTTPHeaders_Clone shall return NULL.] */
-                free(result);
+                k_free(result);
                 result = NULL;
             }
             else

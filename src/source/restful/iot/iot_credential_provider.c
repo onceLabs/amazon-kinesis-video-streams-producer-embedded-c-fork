@@ -64,6 +64,8 @@ static int parseIoTCredential(const char *pcJsonSrc, size_t uJsonSrcLen, IotCred
     int err = 0;
     struct iot_credential_response_s iot_credential_response;
 
+    LogInfo("pcJsonSrc: %s\n", pcJsonSrc);
+
     err = 
       json_obj_parse(
         pcJsonSrc, 
@@ -74,64 +76,76 @@ static int parseIoTCredential(const char *pcJsonSrc, size_t uJsonSrcLen, IotCred
 
     if (err > 0) {
       // Log out the parsed values
-      LogInfo("\r\naccessKeyId: %s", iot_credential_response.credentials.accessKeyId);
-      LogInfo("\r\nsecretAccessKey: %s", iot_credential_response.credentials.secretAccessKey);
-      LogInfo("\r\nsessionToken: %s", iot_credential_response.credentials.sessionToken);
+      LogInfo("\r\naccessKeyId: %s %u\n", iot_credential_response.credentials.accessKeyId, strlen(iot_credential_response.credentials.accessKeyId));
+      LogInfo("\r\nsecretAccessKey: %s %u\n", iot_credential_response.credentials.secretAccessKey, strlen(iot_credential_response.credentials.secretAccessKey));
+      LogInfo("\r\nsessionToken: %s %u\n", iot_credential_response.credentials.sessionToken, strlen(iot_credential_response.credentials.sessionToken));
 
       // Copy the parsed values to the token
-      pToken->pAccessKeyId = iot_credential_response.credentials.accessKeyId;
-      pToken->pSecretAccessKey = iot_credential_response.credentials.secretAccessKey;
-      pToken->pSessionToken = iot_credential_response.credentials.sessionToken;
+      pToken->pAccessKeyId = k_malloc(strlen(iot_credential_response.credentials.accessKeyId) + 1);
+      if (pToken->pAccessKeyId == NULL) {
+        return KVS_ERROR_OUT_OF_MEMORY;
+      }
+      strcpy(pToken->pAccessKeyId, iot_credential_response.credentials.accessKeyId);
+      pToken->pSecretAccessKey = k_malloc(strlen(iot_credential_response.credentials.secretAccessKey) + 1);
+      if (pToken->pSecretAccessKey == NULL) {
+        return KVS_ERROR_OUT_OF_MEMORY;
+      }
+      strcpy(pToken->pSecretAccessKey, iot_credential_response.credentials.secretAccessKey);
+      pToken->pSessionToken = k_malloc(strlen(iot_credential_response.credentials.sessionToken) + 1);
+      if (pToken->pSessionToken == NULL) {
+        return KVS_ERROR_OUT_OF_MEMORY;
+      }
+      strcpy(pToken->pSessionToken, iot_credential_response.credentials.sessionToken);
 
       return KVS_ERRNO_NONE;
     } else {
       return KVS_ERROR_FAIL_TO_PARSE_JSON_OF_IOT_CREDENTIAL;
     }
 
-    // Logu out the pcJsonSrc, uJsonSrcLen, pToken
-    LogInfo("pcJsonSrc: %s", pcJsonSrc);
-    LogInfo("uJsonSrcLen: %d", uJsonSrcLen);
-    LogInfo("pToken: %s", pToken);
+    // // Logu out the pcJsonSrc, uJsonSrcLen, pToken
+    // LogInfo("pcJsonSrc: %s", pcJsonSrc);
+    // LogInfo("uJsonSrcLen: %d", uJsonSrcLen);
+    // LogInfo("pToken: %s", pToken);
 
-    int res = KVS_ERRNO_NONE;
-    STRING_HANDLE xStJson = NULL;
-    JSON_Value *pxRootValue = NULL;
-    JSON_Object *pxRootObject = NULL;
+    // int res = KVS_ERRNO_NONE;
+    // STRING_HANDLE xStJson = NULL;
+    // JSON_Value *pxRootValue = NULL;
+    // JSON_Object *pxRootObject = NULL;
 
-    json_set_escape_slashes(0);
+    // json_set_escape_slashes(0);
 
-    if (pcJsonSrc == NULL || uJsonSrcLen == 0 || pToken == NULL)
-    {
-        res = KVS_ERROR_INVALID_ARGUMENT;
-        LogError("Invalid argument");
-    }
-    else if ((xStJson = STRING_construct_n(pcJsonSrc, uJsonSrcLen)) == NULL)
-    {
-        res = KVS_ERROR_OUT_OF_MEMORY;
-        LogError("OOM: parse IoT credential");
-    }
-    else if (
-        (pxRootValue = json_parse_string(STRING_c_str(xStJson))) == NULL || (pxRootObject = json_value_get_object(pxRootValue)) == NULL ||
-        (pToken->pAccessKeyId = json_object_dotget_serialize_to_string(pxRootObject, "credentials.accessKeyId", true)) == NULL ||
-        (pToken->pSecretAccessKey = json_object_dotget_serialize_to_string(pxRootObject, "credentials.secretAccessKey", true)) == NULL ||
-        (pToken->pSessionToken = json_object_dotget_serialize_to_string(pxRootObject, "credentials.sessionToken", true)) == NULL)
-    {
-        res = KVS_ERROR_FAIL_TO_PARSE_JSON_OF_IOT_CREDENTIAL;
-        LogError("Failed to parse IoT credential");
-    }
-    else
-    {
-        /* nop */
-    }
+    // if (pcJsonSrc == NULL || uJsonSrcLen == 0 || pToken == NULL)
+    // {
+    //     res = KVS_ERROR_INVALID_ARGUMENT;
+    //     LogError("Invalid argument");
+    // }
+    // else if ((xStJson = STRING_construct_n(pcJsonSrc, uJsonSrcLen)) == NULL)
+    // {
+    //     res = KVS_ERROR_OUT_OF_MEMORY;
+    //     LogError("OOM: parse IoT credential");
+    // }
+    // else if (
+    //     (pxRootValue = json_parse_string(STRING_c_str(xStJson))) == NULL || (pxRootObject = json_value_get_object(pxRootValue)) == NULL ||
+    //     (pToken->pAccessKeyId = json_object_dotget_serialize_to_string(pxRootObject, "credentials.accessKeyId", true)) == NULL ||
+    //     (pToken->pSecretAccessKey = json_object_dotget_serialize_to_string(pxRootObject, "credentials.secretAccessKey", true)) == NULL ||
+    //     (pToken->pSessionToken = json_object_dotget_serialize_to_string(pxRootObject, "credentials.sessionToken", true)) == NULL)
+    // {
+    //     res = KVS_ERROR_FAIL_TO_PARSE_JSON_OF_IOT_CREDENTIAL;
+    //     LogError("Failed to parse IoT credential");
+    // }
+    // else
+    // {
+    //     /* nop */
+    // }
 
-    if (pxRootValue != NULL)
-    {
-        json_value_free(pxRootValue);
-    }
+    // if (pxRootValue != NULL)
+    // {
+    //     json_value_free(pxRootValue);
+    // }
 
-    STRING_delete(xStJson);
+    // STRING_delete(xStJson);
 
-    return res;
+    // return res;
 }
 
 IotCredentialToken_t *Iot_getCredential(IotCredentialRequest_t *pReq)

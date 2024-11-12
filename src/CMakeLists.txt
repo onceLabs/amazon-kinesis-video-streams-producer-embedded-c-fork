@@ -47,7 +47,7 @@ set(LIB_SRC
     ${LIB_DIR}/source/os/allocator.h
     ${LIB_DIR}/source/os/endian.h
     ${LIB_DIR}/source/os/pool_allocator.c
-    ${LIB_DIR}/source/restful/aws_signer_v4.c
+    ${LIB_DIR}/source/restful/aws_signer_v4_zephyr.c
     ${LIB_DIR}/source/restful/aws_signer_v4.h
     ${LIB_DIR}/source/restful/iot/iot_credential_provider.c
     ${LIB_DIR}/source/restful/kvs/restapi_kvs.c
@@ -55,6 +55,7 @@ set(LIB_SRC
     ${LIB_DIR}/source/transport/sockets_zephyr.c
     ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include/mbedtls/ctr_drbg.h
     ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include/mbedtls/entropy.h
+    ${LIB_DIR}/source/os/zephyr_fixes.c
 )
 
 set(LIB_PUB_INC

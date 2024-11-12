@@ -14,6 +14,7 @@
  */
 
 #include <stdlib.h>
+#include <zephyr/kernel.h>
 
 /* Public headers */
 #include "kvs/pool_allocator.h"
@@ -21,24 +22,46 @@
 /* Internal headers */
 #include "allocator.h"
 
+static void *k_realloc(void *ptr, size_t new_size) {
+    if (ptr == NULL) {
+        return k_malloc(new_size);
+    }
+
+    if (new_size == 0) {
+        k_free(ptr);
+        return NULL;
+    }
+
+    void *new_ptr = k_malloc(new_size);
+    if (new_ptr == NULL) {
+        return NULL;
+    }
+
+    // Copy the old data to the new block of memory
+    memcpy(new_ptr, ptr, new_size);
+    k_free(ptr);
+
+    return new_ptr;
+}
+
 void *kvsMalloc(size_t bytes)
 {
-    return malloc(bytes);
+    return k_malloc(bytes);
 }
 
 void *kvsRealloc(void *ptr, size_t bytes)
 {
-    return realloc(ptr, bytes);
+    return k_realloc(ptr, bytes);
 }
 
 void *kvsCalloc(size_t num, size_t bytes)
 {
-    return calloc(num, bytes);
+    return k_calloc(num, bytes);
 }
 
 void kvsFree(void *ptr)
 {
-    free(ptr);
+    k_free(ptr);
 }
 
 /**
