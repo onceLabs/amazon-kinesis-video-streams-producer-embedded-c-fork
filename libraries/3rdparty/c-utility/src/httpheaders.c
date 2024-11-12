@@ -10,6 +10,7 @@
 #include "azure_c_shared_utility/crt_abstractions.h"
 #include "azure_c_shared_utility/xlogging.h"
 
+// #include <zephyr/kernel.h>
 
 
 MU_DEFINE_ENUM_STRINGS(HTTP_HEADERS_RESULT, HTTP_HEADERS_RESULT_VALUES);
@@ -22,22 +23,22 @@ typedef struct HTTP_HEADERS_HANDLE_DATA_TAG
 
 static void *k_realloc(void *ptr, size_t new_size) {
     if (ptr == NULL) {
-        return k_malloc(new_size);
+        return malloc(new_size);
     }
 
     if (new_size == 0) {
-        k_free(ptr);
+        free(ptr);
         return NULL;
     }
 
-    void *new_ptr = k_malloc(new_size);
+    void *new_ptr = malloc(new_size);
     if (new_ptr == NULL) {
         return NULL;
     }
 
     // Copy the old data to the new block of memory
     memcpy(new_ptr, ptr, new_size);
-    k_free(ptr);
+    kvsFree(ptr);
 
     return new_ptr;
 }
@@ -313,7 +314,7 @@ HTTP_HEADERS_RESULT HTTPHeaders_GetHeader(HTTP_HEADERS_HANDLE handle, size_t ind
                     (void)memcpy(runDestination, keys[index], keyLen);
                     runDestination += keyLen;
                     (*runDestination++) = ':';
-                    (*runDestination++) = ' ';
+                    (*runDestination++) = '';
                     (void)memcpy(runDestination, values[index], valueLen + /*EOL*/ 1);
                     /*Codes_SRS_HTTP_HEADERS_99_035:[ The function shall return HTTP_HEADERS_OK when the function executed without error.]*/
                     result = HTTP_HEADERS_OK;
