@@ -110,7 +110,7 @@ static int prvGenerateHttpReq(const char *pcHttpMethod, const char *pcUri, HTTP_
                     if (newReq == NULL)
                     {
                         res = KVS_ERROR_C_UTIL_STRING_ERROR;
-                        free(pcHeader);
+                        k_free(pcHeader);
                         break;
                     }
 
@@ -119,7 +119,7 @@ static int prvGenerateHttpReq(const char *pcHttpMethod, const char *pcUri, HTTP_
                     strcat(xStHttpReq, "\r\n");
 
                     /* pcHeader was created by HTTPHeaders_GetHeader via malloc */
-                    free(pcHeader);
+                    k_free(pcHeader);
                 }
             }
 

@@ -298,7 +298,7 @@ HTTP_HEADERS_RESULT HTTPHeaders_GetHeader(HTTP_HEADERS_HANDLE handle, size_t ind
             {
                 size_t keyLen = strlen(keys[index]);
                 size_t valueLen = strlen(values[index]);
-                *destination = (char*)malloc(sizeof(char) * (keyLen + /*COLON_AND_SPACE_LENGTH*/ 2 + valueLen + /*EOL*/ 1));
+                *destination = (char*)k_malloc(sizeof(char) * (keyLen + /*COLON_AND_SPACE_LENGTH*/ 2 + valueLen + /*EOL*/ 1));
                 if (*destination == NULL)
                 {
                     /*Codes_SRS_HTTP_HEADERS_99_034:[ The function shall return HTTP_HEADERS_ERROR when an internal error occurs]*/

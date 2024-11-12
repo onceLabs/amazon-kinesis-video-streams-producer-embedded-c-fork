@@ -281,7 +281,7 @@ NetIoHandle NetIo_create(void)
         mbedtls_ssl_config_init(&(_pxNet->xConf));
         mbedtls_ctr_drbg_init(&(_pxNet->xCtrDrbg));
         mbedtls_entropy_init(&(_pxNet->xEntropy));
-        mbedtls_ssl_conf_dbg(&(_pxNet->xConf), zephyr_mbedtls_debug, NULL);
+        //mbedtls_ssl_conf_dbg(&(_pxNet->xConf), zephyr_mbedtls_debug, NULL);
         _pxNet->uRecvTimeoutMs = DEFAULT_CONNECTION_TIMEOUT_MS;
         _pxNet->uSendTimeoutMs = DEFAULT_CONNECTION_TIMEOUT_MS;
 
@@ -348,6 +348,15 @@ void NetIo_disconnect(NetIoHandle xNetIoHandle)
     {
         mbedtls_ssl_close_notify(&(pxNet->xSsl));
     }
+
+    LOG_DBG("Disconnecting socket %d", pxNet->tcpSocket);
+
+    SocketStatus_t returnStatus = Sockets_Disconnect(pxNet->tcpSocket);
+
+    if (returnStatus != SOCKETS_SUCCESS)
+    {
+        LOG_ERR("Failed to disconnect socket %d (err:-%d)", pxNet->tcpSocket, returnStatus);
+    }
 }
 
 int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uBytesToSend)
@@ -378,7 +387,7 @@ int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uB
       {
         LOG_DBG("Sending data: bytesRemaining= %d", uBytesRemaining);
         // Log data that is being sent
-        LOG_HEXDUMP_DBG(pIndex, uBytesRemaining, "Data being sent");
+        //LOG_HEXDUMP_DBG(pIndex, uBytesRemaining, "Data being sent");
         tlsStatus = (uint32_t) mbedtls_ssl_write(&(pxNet->xSsl), (const unsigned char *)pIndex, uBytesRemaining);
         if( 
           ( tlsStatus == MBEDTLS_ERR_SSL_TIMEOUT ) ||

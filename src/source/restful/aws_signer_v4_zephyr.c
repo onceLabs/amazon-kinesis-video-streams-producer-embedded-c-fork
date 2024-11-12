@@ -23,7 +23,6 @@
 #include <string.h>
 
 /* Third party headers */
-#include "azure_c_shared_utility/strings.h"
 #include "azure_c_shared_utility/xlogging.h"
 #include "mbedtls/md.h"
 #include "mbedtls/sha256.h"
@@ -70,15 +69,21 @@ LOG_MODULE_REGISTER(aws_signer_v4, LOG_LEVEL_DBG);
 
 #define TEMPLATE_SIGNATURE_START "%s%s"
 
+// typedef struct STRING_TAG* STRING_HANDLE;
+
+// typedef struct STRING_TAG
+// {
+//     char* s;
+// } STRING;
+
 typedef struct AwsSigV4
 {
-    STRING_HANDLE xStCanonicalRequest;
-    STRING_HANDLE xStSignedHeaders;
-    STRING_HANDLE xStScope;
-    STRING_HANDLE xStHmacHexEncoded;
-    STRING_HANDLE xStAuthorization;
+    char *xStCanonicalRequest;
+    char *xStSignedHeaders;
+    char *xStScope;
+    char *xStHmacHexEncoded;
+    char *xStAuthorization;
 } AwsSigV4_t;
-
 
 bool othernonreserved(char c)
 {
@@ -217,7 +222,7 @@ AwsSigV4Handle AwsSigV4_Create(char *pcHttpMethod, char *pcUri, char *pcQuery)
             }
             memset(pxAwsSigV4, 0, sizeof(AwsSigV4_t));
 
-            pxAwsSigV4->xStCanonicalRequest = STRING_construct_sprintf("%s\n%s\n%s\n", pcHttpMethod, pcUri, (pcQuery == NULL) ? "" : pcQuery);
+            pxAwsSigV4->xStCanonicalRequest = sprintf("%s\n%s\n%s\n", pcHttpMethod, pcUri, (pcQuery == NULL) ? "" : pcQuery);
             pxAwsSigV4->xStSignedHeaders = STRING_new();
             pxAwsSigV4->xStScope = STRING_new();
             pxAwsSigV4->xStHmacHexEncoded = STRING_new();
@@ -331,7 +336,7 @@ int AwsSigV4_Sign(AwsSigV4Handle xSigV4Handle, char *pcAccessKey, char *pcSecret
     char pcCanonicalReqHexEncSha256[HEX_ENCODED_SHA_256_STRING_SIZE] = {0};
     const mbedtls_md_info_t *pxMdInfo = NULL;
     mbedtls_md_context_t xMdCtx;
-    STRING_HANDLE xStSignedStr = NULL;
+    char *xStSignedStr = NULL;
     size_t uHmacSize = 0;
     char pHmac[AWS_SIG_V4_MAX_HMAC_SIZE] = {0};
     char pHmac2[AWS_SIG_V4_MAX_HMAC_SIZE] = {0};

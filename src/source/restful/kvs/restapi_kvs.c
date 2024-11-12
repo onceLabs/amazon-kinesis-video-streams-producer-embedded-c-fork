@@ -181,82 +181,113 @@ static AwsSigV4Handle prvSign(KvsServiceParameter_t *pServPara, char *pcUri, cha
     }
 
     // Connection header
-    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_CONNECTION)) != NULL && AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_CONNECTION, pcVal) != KVS_ERRNO_NONE) {
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_CONNECTION)) != NULL && 
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_CONNECTION, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
 
     // Host header
-    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_HOST)) != NULL && 
-                AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_HOST, pcVal) != KVS_ERRNO_NONE) {
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_HOST)) != NULL && 
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_HOST, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
 
     // transfer-encoding header
-    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_TRANSFER_ENCODING)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_TRANSFER_ENCODING, pcVal) != KVS_ERRNO_NONE) {
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_TRANSFER_ENCODING)) != NULL &&
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_TRANSFER_ENCODING, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
 
     // user-agent header
-    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_USER_AGENT)) != NULL && AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_USER_AGENT, pcVal) != KVS_ERRNO_NONE) {
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_USER_AGENT)) != NULL && 
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_USER_AGENT, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
 
     // range header - for testing
     #define HDR_RANGE "range"
-    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_RANGE)) != NULL && AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_RANGE, pcVal) != KVS_ERRNO_NONE) {
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_RANGE)) != NULL && 
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_RANGE, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
 
     // x-amz-content-sha256 header
     #define HDR_X_AMZ_CONTENT_SHA256 "x-amz-content-sha256"
-    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZ_CONTENT_SHA256)) != NULL && AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZ_CONTENT_SHA256, pcVal) != KVS_ERRNO_NONE) {
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZ_CONTENT_SHA256)) != NULL && 
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZ_CONTENT_SHA256, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
 
     // x-amz-date header
-    if ((pcXAmzDate = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZ_DATE)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZ_DATE, pcXAmzDate) != KVS_ERRNO_NONE) {
+    if (
+      (pcXAmzDate = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZ_DATE)) != NULL &&  
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZ_DATE, pcXAmzDate) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
 
     // x-amz-security-token header
-    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZ_SECURITY_TOKEN)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZ_SECURITY_TOKEN, pcVal) != KVS_ERRNO_NONE) {
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZ_SECURITY_TOKEN)) != NULL &&
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZ_SECURITY_TOKEN, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
 
     // x-amzn-fragment-acknowledgment-required header
-    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_FRAG_ACK_REQUIRED)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_FRAG_ACK_REQUIRED, pcVal) != KVS_ERRNO_NONE) {
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_FRAG_ACK_REQUIRED)) != NULL &&
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_FRAG_ACK_REQUIRED, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
 
     // x-amzn-fragment-timecode-type header
-    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_FRAG_T_TYPE)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_FRAG_T_TYPE, pcVal) != KVS_ERRNO_NONE) {
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_FRAG_T_TYPE)) != NULL &&
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_FRAG_T_TYPE, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
 
     // x-amzn-producer-start-timestamp header
-    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_PRODUCER_START_T)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_PRODUCER_START_T, pcVal) != KVS_ERRNO_NONE) {
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_PRODUCER_START_T)) != NULL &&
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_PRODUCER_START_T, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
 
     // x-amzn-stream-name header
-    if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_STREAM_NAME)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_STREAM_NAME, pcVal) != KVS_ERRNO_NONE) {
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_STREAM_NAME)) != NULL &&
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_STREAM_NAME, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
 
     // Add body to canonical request
-    if (AwsSigV4_AddCanonicalBody(xAwsSigV4Handle, pcHttpBody, strlen(pcHttpBody)) != KVS_ERRNO_NONE) {
+    if (
+      AwsSigV4_AddCanonicalBody(xAwsSigV4Handle, pcHttpBody, strlen(pcHttpBody)) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERRNO_FAIL;
     }
 
     // Sign the request
-    if ((res = AwsSigV4_Sign(xAwsSigV4Handle, pServPara->pcAccessKey, pServPara->pcSecretKey, pServPara->pcRegion, pServPara->pcService, pcXAmzDate)) != KVS_ERRNO_NONE) {
+    if (
+      (res = AwsSigV4_Sign(xAwsSigV4Handle, pServPara->pcAccessKey, pServPara->pcSecretKey, pServPara->pcRegion, pServPara->pcService, pcXAmzDate)) != KVS_ERRNO_NONE) {
         /* Propagate the res error */
     }
 
@@ -916,6 +947,9 @@ int Kvs_createStream(KvsServiceParameter_t *pServPara, KvsCreateStreamParameter_
         {
             LogInfo("Create Stream failed, HTTP status code: %u", uHttpStatusCode);
             LogInfo("HTTP response message:%.*s", (int)uRspBodyLen, pRspBody);
+        } else {
+          LOG_DBG("Create Stream success, HTTP status code: %u", uHttpStatusCode);
+          LOG_DBG("HTTP response message:%.*s", (int)uRspBodyLen, pRspBody);
         }
     }
 
@@ -996,8 +1030,8 @@ int Kvs_getDataEndpoint(KvsServiceParameter_t *pServPara, KvsGetDataEndpointPara
         LogError("Failed to create NetIo handle");
     }
     else if (
-        (res = NetIo_setRecvTimeout(xNetIoHandle, pServPara->uRecvTimeoutMs)) != KVS_ERRNO_NONE ||
-        (res = NetIo_setSendTimeout(xNetIoHandle, pServPara->uSendTimeoutMs)) != KVS_ERRNO_NONE ||
+        // (res = NetIo_setRecvTimeout(xNetIoHandle, pServPara->uRecvTimeoutMs)) != KVS_ERRNO_NONE ||
+        // (res = NetIo_setSendTimeout(xNetIoHandle, pServPara->uSendTimeoutMs)) != KVS_ERRNO_NONE ||
         (res = NetIo_connect(xNetIoHandle, pServPara->pcHost, PORT_HTTPS)) != KVS_ERRNO_NONE)
     {
         LogError("Failed to connect to %s", pServPara->pcHost);
