@@ -238,6 +238,7 @@ static AwsSigV4Handle prvSign(KvsServiceParameter_t *pServPara, char *pcUri, cha
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
 
+    memset((void *)&pcVal, 0, sizeof(pcVal));
     // x-amz-security-token header
     if (
       (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZ_SECURITY_TOKEN)) != NULL &&
@@ -245,6 +246,7 @@ static AwsSigV4Handle prvSign(KvsServiceParameter_t *pServPara, char *pcUri, cha
     ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
+    LOG_DBG("pcVal session-token: %s", pcVal);
 
     // x-amzn-fragment-acknowledgment-required header
     if (
@@ -286,6 +288,7 @@ static AwsSigV4Handle prvSign(KvsServiceParameter_t *pServPara, char *pcUri, cha
     }
 
     // Sign the request
+    LOG_DBG("Signing the request: pcAccessKey: %s", pServPara->pcAccessKey);
     if (
       (res = AwsSigV4_Sign(xAwsSigV4Handle, pServPara->pcAccessKey, pServPara->pcSecretKey, pServPara->pcRegion, pServPara->pcService, pcXAmzDate)) != KVS_ERRNO_NONE) {
         /* Propagate the res error */
@@ -750,6 +753,8 @@ int Kvs_describeStream(KvsServiceParameter_t *pServPara, KvsDescribeStreamParame
 
     NetIoHandle xNetIoHandle = NULL;
 
+    LOG_DBG("token before describeStream: %s %d", pServPara->pcAccessKey, strlen(pServPara->pcAccessKey));
+
     if (puHttpStatusCode != NULL)
     {
         *puHttpStatusCode = 0; /* Set to zero to avoid misuse from the previous value. */
@@ -981,6 +986,8 @@ int Kvs_getDataEndpoint(KvsServiceParameter_t *pServPara, KvsGetDataEndpointPara
     size_t uRspBodyLen = 0;
 
     NetIoHandle xNetIoHandle = NULL;
+
+    LOG_DBG("token before getDataEndpoint: %s %d, %s %d", pServPara->pcAccessKey, strlen(pServPara->pcAccessKey), pServPara->pcToken, strlen(pServPara->pcToken));
 
     if (puHttpStatusCode != NULL)
     {

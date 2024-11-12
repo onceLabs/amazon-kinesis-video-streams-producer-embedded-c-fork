@@ -504,6 +504,7 @@ static int setupDataEndpoint(KvsApp_t *pKvs)
         else
         {
             LogInfo("Try to describe stream %s", pKvs->xDescPara.pcStreamName);
+            LOG_DBG("token pre describe stream: %s, %s", pKvs->xServicePara.pcAccessKey, pKvs->xServicePara.pcToken);
             if ((res = Kvs_describeStream(&(pKvs->xServicePara), &(pKvs->xDescPara), &uHttpStatusCode)) != KVS_ERRNO_NONE)
             {
                 LogError("Unable to describe stream");
@@ -526,6 +527,7 @@ static int setupDataEndpoint(KvsApp_t *pKvs)
                     res = KVS_GENERATE_RESTFUL_ERROR(uHttpStatusCode);
                 }
             }
+            LOG_DBG("token pre get data endpoint: %s, %s", pKvs->xServicePara.pcAccessKey, pKvs->xServicePara.pcToken);
 
             if (res == KVS_ERRNO_NONE)
             {

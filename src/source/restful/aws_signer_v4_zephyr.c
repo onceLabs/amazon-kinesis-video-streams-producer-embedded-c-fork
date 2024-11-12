@@ -24,6 +24,8 @@
 
 /* Third party headers */
 #include "azure_c_shared_utility/xlogging.h"
+#include "azure_c_shared_utility/strings.h"
+#include "azure_c_shared_utility/httpheaders.h"
 #include "mbedtls/md.h"
 #include "mbedtls/sha256.h"
 
@@ -76,13 +78,22 @@ LOG_MODULE_REGISTER(aws_signer_v4, LOG_LEVEL_DBG);
 //     char* s;
 // } STRING;
 
+// typedef struct AwsSigV4
+// {
+//     char *xStCanonicalRequest;
+//     char *xStSignedHeaders;
+//     char *xStScope;
+//     char *xStHmacHexEncoded;
+//     char *xStAuthorization;
+// } AwsSigV4_t;
+
 typedef struct AwsSigV4
 {
-    char *xStCanonicalRequest;
-    char *xStSignedHeaders;
-    char *xStScope;
-    char *xStHmacHexEncoded;
-    char *xStAuthorization;
+    STRING_HANDLE xStCanonicalRequest;
+    STRING_HANDLE xStSignedHeaders;
+    STRING_HANDLE xStScope;
+    STRING_HANDLE xStHmacHexEncoded;
+    STRING_HANDLE xStAuthorization;
 } AwsSigV4_t;
 
 bool othernonreserved(char c)
@@ -222,7 +233,7 @@ AwsSigV4Handle AwsSigV4_Create(char *pcHttpMethod, char *pcUri, char *pcQuery)
             }
             memset(pxAwsSigV4, 0, sizeof(AwsSigV4_t));
 
-            pxAwsSigV4->xStCanonicalRequest = sprintf("%s\n%s\n%s\n", pcHttpMethod, pcUri, (pcQuery == NULL) ? "" : pcQuery);
+            pxAwsSigV4->xStCanonicalRequest = STRING_construct_sprintf("%s\n%s\n%s\n", pcHttpMethod, pcUri, (pcQuery == NULL) ? "" : pcQuery);
             pxAwsSigV4->xStSignedHeaders = STRING_new();
             pxAwsSigV4->xStScope = STRING_new();
             pxAwsSigV4->xStHmacHexEncoded = STRING_new();
@@ -389,10 +400,10 @@ int AwsSigV4_Sign(AwsSigV4Handle xSigV4Handle, char *pcAccessKey, char *pcSecret
     
     /* Generate the beginning of the signature. */
     // pcSecretKey = uri_escape(pcSecretKey);
-    if (pcSecretKey == NULL)
-    {
-        res = KVS_ERROR_OUT_OF_MEMORY;
-    }
+    // if (pcSecretKey == NULL)
+    // {
+    //     res = KVS_ERROR_OUT_OF_MEMORY;
+    // }
     if (snprintf(pHmac, AWS_SIG_V4_MAX_HMAC_SIZE, TEMPLATE_SIGNATURE_START, AWS_SIG_V4_SIGNATURE_START, pcSecretKey) == 0)
     {
         res = KVS_ERROR_C_UTIL_STRING_ERROR;
@@ -440,7 +451,7 @@ int AwsSigV4_Sign(AwsSigV4Handle xSigV4Handle, char *pcAccessKey, char *pcSecret
                 break;
             }
         }
-
+        LOG_DBG("Pre-scope generation: %s, %p, scope: %s", pcAccessKey, pcAccessKey, STRING_c_str(pxAwsSigV4->xStScope));
         if (res == 0) {
             if (STRING_sprintf(
                     pxAwsSigV4->xStAuthorization,
@@ -452,6 +463,8 @@ int AwsSigV4_Sign(AwsSigV4Handle xSigV4Handle, char *pcAccessKey, char *pcSecret
             {
                 res = KVS_ERROR_C_UTIL_STRING_ERROR;
             }
+        } else {
+            LOG_WRN("Failed to generate Authorization string");
         }
     } else {
         LogError("Failed to sign the request");
@@ -483,7 +496,10 @@ const char *AwsSigV4_GetAuthorization(AwsSigV4Handle xSigV4Handle)
 
     if (pxAwsSigV4 != NULL)
     {
-        return STRING_c_str(pxAwsSigV4->xStAuthorization);
+        char *tmp = STRING_c_str(pxAwsSigV4->xStAuthorization);
+        LOG_DBG("Authorization: %s", tmp);
+        return tmp;
+        // return STRING_c_str(pxAwsSigV4->xStAuthorization);
     }
     else
     {

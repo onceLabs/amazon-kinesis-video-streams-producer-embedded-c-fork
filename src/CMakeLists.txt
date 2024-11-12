@@ -47,7 +47,7 @@ set(LIB_SRC
     ${LIB_DIR}/source/os/allocator.h
     ${LIB_DIR}/source/os/endian.h
     ${LIB_DIR}/source/os/pool_allocator.c
-    ${LIB_DIR}/source/restful/aws_signer_v4.c
+    ${LIB_DIR}/source/restful/aws_signer_v4_zephyr.c
     ${LIB_DIR}/source/restful/aws_signer_v4.h
     ${LIB_DIR}/source/restful/iot/iot_credential_provider.c
     ${LIB_DIR}/source/restful/kvs/restapi_kvs.c
