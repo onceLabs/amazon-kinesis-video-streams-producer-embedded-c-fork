@@ -604,7 +604,8 @@ static int createStream(KvsApp_t *pKvs)
         LOG_DBG("Needs new stream buffer");
         if (pKvs->pVideoTrackInfo == NULL && pKvs->pSps != NULL && pKvs->pPps != NULL)
         {
-            LOG_DBG("Getting video track info from SPS & PPS");
+            LOG_INF("Getting video track info from SPS & PPS");
+            LOG_DBG("SPS: %u, PPS: %u", pKvs->pSps, pKvs->pPps);
             /* We don't have video track info, but we have SPS & PPS to generate video track info from it. */
             if ((res = NALU_getH264VideoResolutionFromSps(pKvs->pSps, pKvs->uSpsLen, &(xVideoTrackInfo.uWidth), &(xVideoTrackInfo.uHeight))) != KVS_ERRNO_NONE ||
                 (res = Mkv_generateH264CodecPrivateDataFromSpsPps(pKvs->pSps, pKvs->uSpsLen, pKvs->pPps, pKvs->uPpsLen, &pCodecPrivateData, &uCodecPrivateDataLen)) != KVS_ERRNO_NONE)
