@@ -5,6 +5,13 @@ elseif(${BOARD_RPI})
 else()
     set(BOARD "FILE")
 endif()
+
+get_cmake_property(_variableNames VARIABLES)
+list (SORT _variableNames)
+foreach (_variableName ${_variableNames})
+    message(STATUS "${_variableName}=${${_variableName}}")
+endforeach()
+
 set(BUILD_WEBRTC_SAMPLES_SAVED "${BUILD_WEBRTC_SAMPLES}")
 set(BUILD_WEBRTC_SAMPLES OFF)
 add_subdirectory(libraries/amazon/amazon-kinesis-video-streams-media-interface)
