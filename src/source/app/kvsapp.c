@@ -261,11 +261,13 @@ static int prvStreamFlushToNextCluster(KvsApp_t *pKvs)
         if (xStreamHandle == NULL)
         {
             res = KVS_ERROR_INVALID_ARGUMENT;
+            LOG_ERR("Invalid argument: xStreamHandle is NULL");
             break;
         }
         else if ((xDataFrameHandle = Kvs_streamPeek(xStreamHandle)) == NULL)
         {
             res = KVS_ERROR_STREAM_NO_AVAILABLE_DATA_FRAME;
+            LOG_ERR("Kvs_streamPeek failed with error %d", res);
             break;
         }
         else
@@ -277,7 +279,8 @@ static int prvStreamFlushToNextCluster(KvsApp_t *pKvs)
                 break;
             }
             else
-            {
+            {   
+                LOG_INF("xCusterType is not MKV_CLUSTER, pop it");
                 xDataFrameHandle = Kvs_streamPop(xStreamHandle);
                 pDataFrameIn = (DataFrameIn_t *)xDataFrameHandle;
                 prvCallOnDataFrameTerminate(pDataFrameIn);
