@@ -137,7 +137,7 @@ StreamHandle Kvs_streamCreate(VideoTrackInfo_t *pVideoTrackInfo, AudioTrackInfo_
             k_free(pxStream);
             pxStream = NULL;
         }
-        else if (k_mutex_init(pxStream->xLockMutex))//((pxStream->xLock = Lock_Init()) == NULL)
+        else if (k_mutex_init(&(pxStream->xLockMutex)))//((pxStream->xLock = Lock_Init()) == NULL)
         {
             LogError("Failed to initialize lock");
             k_free(pxStream);
