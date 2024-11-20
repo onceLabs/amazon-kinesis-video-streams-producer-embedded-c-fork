@@ -27,9 +27,12 @@
 #include "kvs/stream.h"
 // Include zephyr kernel header
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
 
 /* Internal headers */
 #include "os/allocator.h"
+
+LOG_MODULE_REGISTER(kvs_stream, LOG_LEVEL_DBG);
 
 typedef struct DataFrame
 {
@@ -228,6 +231,7 @@ DataFrameHandle Kvs_streamAddDataFrame(StreamHandle xStreamHandle, DataFrameIn_t
     }
     else
     {
+        LOG_DBG("Initializing DList");
         memset(pxDataFrame, 0, sizeof(DataFrame_t));
         memcpy(pxDataFrame, pxDataFrameIn, sizeof(DataFrameIn_t));
         DList_InitializeListHead(&(pxDataFrame->xClusterEntry));

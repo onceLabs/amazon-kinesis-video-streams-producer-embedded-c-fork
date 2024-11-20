@@ -662,6 +662,7 @@ static int checkAndBuildStream(KvsApp_t *pKvs, uint8_t *pData, size_t uDataLen, 
     if (pKvs->xStreamHandle == NULL)
     {
         /* Try to build video track info from frames. */
+        LOG_DBG("pVideoTrackInfo: %p, pSps: %p", pKvs->pVideoTrackInfo, pKvs->pSps);
         if (pKvs->pVideoTrackInfo == NULL && xTrackType == TRACK_VIDEO)
         {
             if (pKvs->pSps == NULL && NALU_getNaluFromAvccNalus(pData, uDataLen, NALU_TYPE_SPS, &pSps, &uSpsLen) == KVS_ERRNO_NONE)
@@ -1159,6 +1160,7 @@ int KvsApp_setoption(KvsAppHandle handle, const char *pcOptionName, const char *
         }
         else if (strcmp(pcOptionName, (const char *)OPTION_KVS_VIDEO_TRACK_INFO) == 0)
         {
+            LOG_DBG("setoption - Setting video track info");
             if (pValue == NULL)
             {
                 res = KVS_ERROR_INVALID_ARGUMENT;
@@ -1378,6 +1380,7 @@ int KvsApp_addFrameWithCallbacks(KvsAppHandle handle, uint8_t *pData, size_t uDa
 
     if (pKvs == NULL || pData == NULL || uDataLen == 0)
     {
+        LOG_ERR("pKvs is NULL or pData is NULL or uDataLen is 0");
         res = KVS_ERROR_INVALID_ARGUMENT;
     }
     else if (uTimestamp < pKvs->uEarliestTimestamp)
@@ -1407,6 +1410,7 @@ int KvsApp_addFrameWithCallbacks(KvsAppHandle handle, uint8_t *pData, size_t uDa
     }
     else
     {
+        LOG_DBG("Add frame malloc'd and about to build");
         xDataFrameIn.pData = (char *)pData;
         xDataFrameIn.uDataLen = uDataLen;
         xDataFrameIn.bIsKeyFrame = (xTrackType == TRACK_VIDEO) ? isKeyFrame(pData, uDataLen) : false;
