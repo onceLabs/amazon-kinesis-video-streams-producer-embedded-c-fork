@@ -79,7 +79,7 @@ static DataFrameHandle prvStreamPop(StreamHandle xStreamHandle, bool bPeek)
         {
             if (DList_IsListEmpty(&(pxStream->xDataFramePending)))
             {
-                /* LogInfo("No data frame to pop"); */
+                LogInfo("No data frame to pop"); 
             }
             else
             {
