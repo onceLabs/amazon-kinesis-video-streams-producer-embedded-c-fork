@@ -61,6 +61,8 @@ typedef struct Stream
     bool bHasAudioTrack;
 } Stream_t;
 
+static struct k_mutex wrapper_mutex; 
+
 static DataFrameHandle prvStreamPop(StreamHandle xStreamHandle, bool bPeek)
 {
     Stream_t *pxStream = xStreamHandle;
@@ -134,13 +136,15 @@ StreamHandle Kvs_streamCreate(VideoTrackInfo_t *pVideoTrackInfo, AudioTrackInfo_
         DList_InitializeListHead(&(pxStream->xClusterPending));
         DList_InitializeListHead(&(pxStream->xDataFramePending));
 
+        pxStream->xLockMutex = &wrapper_mutex;
+
         if (Mkv_initializeHeaders(&xMkvHeader, pVideoTrackInfo, pAudioTrackInfo) != KVS_ERRNO_NONE)
         {
             LogError("Failed to initialize mkv headers");
             k_free(pxStream);
             pxStream = NULL;
         }
-        else if (k_mutex_init(&(pxStream->xLockMutex)))//((pxStream->xLock = Lock_Init()) == NULL)
+        else if (k_mutex_init(/*&*/(pxStream->xLockMutex)))//((pxStream->xLock = Lock_Init()) == NULL)
         {
             LogError("Failed to initialize lock");
             k_free(pxStream);
@@ -150,6 +154,7 @@ StreamHandle Kvs_streamCreate(VideoTrackInfo_t *pVideoTrackInfo, AudioTrackInfo_
         {
             pxStream->pMkvEbmlSeg = (char *)(xMkvHeader.pHeader);
             pxStream->uMkvEbmlSegLen = (size_t)(xMkvHeader.uHeaderLen);
+            // memcpy(&pxStream->uMkvEbmlSegLen, &xMkvHeader.uHeaderLen, sizeof(size_t));
             pxStream->bHasVideoTrack = true;
             pxStream->bHasAudioTrack = (pAudioTrackInfo == NULL) ? false : true;
         }
