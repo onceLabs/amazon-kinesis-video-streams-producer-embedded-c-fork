@@ -675,8 +675,8 @@ static PutMedia_t *prvCreateDefaultPutMediaHandle()
     }
     else
     {
-        pPutMedia->xLockMutex = &wrapper_mutex;
         memset(pPutMedia, 0, sizeof(PutMedia_t));
+        pPutMedia->xLockMutex = &wrapper_mutex;
 
         if (k_mutex_init(&(pPutMedia->xLockMutex)))//(pPutMedia->xLock = Lock_Init()) == NULL)
         {
