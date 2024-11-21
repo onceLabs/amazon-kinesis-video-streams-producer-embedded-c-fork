@@ -200,7 +200,7 @@ IotCredentialToken_t *Iot_getCredential(IotCredentialRequest_t *pReq)
     }
     else if ((res = Http_executeHttpReq(xNetIoHandle, HTTP_METHOD_GET, STRING_c_str(xStUri), xHttpReqHeaders, HTTP_BODY_EMPTY)) != KVS_ERRNO_NONE)
     {
-        LogError("Failed send http request to %s", res);
+        LogError("Failed send http request to %s", pReq->pCredentialHost);
         /* Propagate the res error */
     }
     else if ((res = Http_recvHttpRsp(xNetIoHandle, &uHttpStatusCode, &pRspBody, &uRspBodyLen)) != KVS_ERRNO_NONE)

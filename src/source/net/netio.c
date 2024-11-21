@@ -481,7 +481,7 @@ int NetIo_recv(NetIoHandle xNetIoHandle, unsigned char *pBuffer, size_t uBufferS
 bool NetIo_isDataAvailable(NetIoHandle xNetIoHandle)
 {
     NetIo_t *pxNet = (NetIo_t *)xNetIoHandle;
-    bool bDataAvailable = false;
+    bool bDataAvailable = true; //false;
     struct timeval tv = {0};
     fd_set read_fds = {0};
     int fd = 0;

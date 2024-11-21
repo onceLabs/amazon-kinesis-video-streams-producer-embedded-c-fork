@@ -27,9 +27,12 @@
 #include "kvs/stream.h"
 // Include zephyr kernel header
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
 
 /* Internal headers */
 #include "os/allocator.h"
+
+LOG_MODULE_REGISTER(kvs_stream, LOG_LEVEL_DBG);
 
 typedef struct DataFrame
 {
@@ -58,6 +61,8 @@ typedef struct Stream
     bool bHasAudioTrack;
 } Stream_t;
 
+static struct k_mutex wrapper_mutex; 
+
 static DataFrameHandle prvStreamPop(StreamHandle xStreamHandle, bool bPeek)
 {
     Stream_t *pxStream = xStreamHandle;
@@ -79,7 +84,7 @@ static DataFrameHandle prvStreamPop(StreamHandle xStreamHandle, bool bPeek)
         {
             if (DList_IsListEmpty(&(pxStream->xDataFramePending)))
             {
-                /* LogInfo("No data frame to pop"); */
+                LogInfo("No data frame to pop"); 
             }
             else
             {
@@ -131,13 +136,15 @@ StreamHandle Kvs_streamCreate(VideoTrackInfo_t *pVideoTrackInfo, AudioTrackInfo_
         DList_InitializeListHead(&(pxStream->xClusterPending));
         DList_InitializeListHead(&(pxStream->xDataFramePending));
 
+        pxStream->xLockMutex = &wrapper_mutex;
+
         if (Mkv_initializeHeaders(&xMkvHeader, pVideoTrackInfo, pAudioTrackInfo) != KVS_ERRNO_NONE)
         {
             LogError("Failed to initialize mkv headers");
             k_free(pxStream);
             pxStream = NULL;
         }
-        else if (k_mutex_init(pxStream->xLockMutex))//((pxStream->xLock = Lock_Init()) == NULL)
+        else if (k_mutex_init(/*&*/(pxStream->xLockMutex)))//((pxStream->xLock = Lock_Init()) == NULL)
         {
             LogError("Failed to initialize lock");
             k_free(pxStream);
@@ -147,6 +154,7 @@ StreamHandle Kvs_streamCreate(VideoTrackInfo_t *pVideoTrackInfo, AudioTrackInfo_
         {
             pxStream->pMkvEbmlSeg = (char *)(xMkvHeader.pHeader);
             pxStream->uMkvEbmlSegLen = (size_t)(xMkvHeader.uHeaderLen);
+            // memcpy(&pxStream->uMkvEbmlSegLen, &xMkvHeader.uHeaderLen, sizeof(size_t));
             pxStream->bHasVideoTrack = true;
             pxStream->bHasAudioTrack = (pAudioTrackInfo == NULL) ? false : true;
         }
@@ -228,6 +236,7 @@ DataFrameHandle Kvs_streamAddDataFrame(StreamHandle xStreamHandle, DataFrameIn_t
     }
     else
     {
+        LOG_DBG("Initializing DList");
         memset(pxDataFrame, 0, sizeof(DataFrame_t));
         memcpy(pxDataFrame, pxDataFrameIn, sizeof(DataFrameIn_t));
         DList_InitializeListHead(&(pxDataFrame->xClusterEntry));
