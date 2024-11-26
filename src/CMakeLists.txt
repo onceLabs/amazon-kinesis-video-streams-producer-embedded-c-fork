@@ -152,7 +152,7 @@ target_link_libraries(${LIB_NAME} PRIVATE
 )
 # endif()
 
-include(GNUInstallDirs)
+# include(GNUInstallDirs)
 
 install(TARGETS ${LIB_NAME}
         LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}

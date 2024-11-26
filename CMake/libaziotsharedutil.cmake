@@ -17,6 +17,8 @@ set(AZURE_C_SHARED_UTILITY_INC
     ${AZURE_C_SHARED_UTILITY_DIR}/inc
     ${AZURE_C_SHARED_UTILITY_DIR}/deps/azure-macro-utils-c/inc
     ${AZURE_C_SHARED_UTILITY_DIR}/deps/umock-c/inc
+    
+    ${ZEPHYR_DIR}/include
 )
 
 zephyr_library_include_directories(${AZURE_C_SHARED_UTILITY_INC})
