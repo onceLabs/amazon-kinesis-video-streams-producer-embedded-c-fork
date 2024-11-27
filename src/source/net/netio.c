@@ -281,7 +281,9 @@ NetIoHandle NetIo_create(void)
         mbedtls_ssl_config_init(&(_pxNet->xConf));
         mbedtls_ctr_drbg_init(&(_pxNet->xCtrDrbg));
         mbedtls_entropy_init(&(_pxNet->xEntropy));
-        //mbedtls_ssl_conf_dbg(&(_pxNet->xConf), zephyr_mbedtls_debug, NULL);
+#if defined(CONFIG_MBEDTLS_DEBUG_FUNC)
+        mbedtls_ssl_conf_dbg(&(_pxNet->xConf), zephyr_mbedtls_debug, NULL);
+#endif
         _pxNet->uRecvTimeoutMs = DEFAULT_CONNECTION_TIMEOUT_MS;
         _pxNet->uSendTimeoutMs = DEFAULT_CONNECTION_TIMEOUT_MS;
 
