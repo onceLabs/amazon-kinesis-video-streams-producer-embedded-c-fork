@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.2.0)
 
 set(LIB_NAME "kvs-embedded-c")
 
+find_package(MBedTLS)
+
 # compiled as C99
 set(CMAKE_C_FLAGS "--std=c99 ${CMAKE_C_FLAGS}")
 
@@ -12,12 +14,21 @@ set(CMAKE_CXX_FLAGS "--std=c++11 ${CMAKE_CXX_FLAGS}")
 set(CMAKE_C_FLAGS "-D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200112L ${CMAKE_C_FLAGS}")
 
 set(LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+<<<<<<< Updated upstream
 set(ZEPHYR_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../zephyr)
 set(ZEPHYR_MODUELS_DIR ${ZEPHYR_DIR}/../../../modules)
+=======
+set(ZEPHYR_DIR ${LIB_DIR}/../../../../../zephyr)
+set(ZEPHYR_MODUELS_DIR ${LIB_DIR}/../../../../../modules)
+>>>>>>> Stashed changes
 
 add_definitions(-DCONFIG_ARM)
 add_definitions(-DCONFIG_MP_MAX_NUM_CPUS=1)
 add_definitions(-DMBEDTLS_DEBUG_C)
+add_definitions(-DMBEDTLS_PK_PARSE_C)
+add_definitions(-DMBEDTLS_USE_PSA_CRYPTO)
+
+include_directories(${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include)
 
 set(LIB_SRC
     ${GENERATED_HEADERS_DIR}/zephyr/autoconf.h
@@ -66,6 +77,8 @@ set(LIB_PUB_INC
     ${GENERATED_HEADERS_DIR}/zephyr
     ${GENERATED_HEADERS_DIR}/zephyr/syscalls
     ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include/mbedtls
+    ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include
+    ${ZEPHYR_DIR}/modules/mbedtls/include
 )
 
 set(LIB_PRV_INC

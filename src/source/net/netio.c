@@ -18,8 +18,12 @@
 #include <string.h>
 
 #include <sys/time.h>
+<<<<<<< Updated upstream
 #include <socket.h>
 #include <zephyr/kernel.h>
+=======
+// #include <socket.h>
+>>>>>>> Stashed changes
 #include <zephyr/net/socket.h>
 /* Third party headers */
 #include "azure_c_shared_utility/xlogging.h"
@@ -28,7 +32,7 @@
 #include <mbedtls/psa_util.h>
 // #include <mbedtls/net.h>
 #include <mbedtls/net_sockets.h>
-#include <zephyr/posix/sys/select.h>
+//#include <zephyr/posix/sys/select.h>
 #include <zephyr/net/net_context.h>
 #include <zephyr/net/net_ip.h>
 #include <zephyr/net/net_pkt.h>
