@@ -725,6 +725,7 @@ static FragmentAck_t *prvReadFragmentAck(PutMedia_t *pPutMedia)
     {
         if (!DList_IsListEmpty(&(pPutMedia->xPendingFragmentAcks)))
         {
+            LOG_DBG("Updating fragment ack");
             pxListHead = &(pPutMedia->xPendingFragmentAcks);
             pxListItem = DList_RemoveHeadList(pxListHead);
             pFragmentAck = containingRecord(pxListItem, FragmentAck_t, xAckEntry);

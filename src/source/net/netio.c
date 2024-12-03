@@ -111,7 +111,7 @@ int zephyr_net_rcv(void *ctx,unsigned char *buf,size_t len)
 int zephyr_net_send(void *ctx, const unsigned char *buf, size_t len)
 {
   int socket = ( int ) ctx;
-  LOG_DBG("Sending data via socket %d", socket);
+//   LOG_DBG("Sending data via socket %d", socket);
   ssize_t sendStatus = zsock_send( socket, buf, len, 0 );
 
   return sendStatus;
@@ -475,6 +475,7 @@ int NetIo_recv(NetIoHandle xNetIoHandle, unsigned char *pBuffer, size_t uBufferS
         else
         {
           *puBytesReceived = n;
+        //   LOG_HEXDUMP_DBG(pBuffer, n, "Data received");
         }
     }
     return res;

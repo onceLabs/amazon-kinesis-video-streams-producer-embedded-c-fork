@@ -429,12 +429,14 @@ int Kvs_streamMemStatTotal(StreamHandle xStreamHandle, size_t *puMemTotal)
 
         pxListHead = &(pxStream->xDataFramePending);
         pxListItem = pxListHead->Flink;
+        int i = 0; // For debugging
         while (pxListItem != pxListHead)
         {
             pxDataFrame = containingRecord(pxListItem, DataFrame_t, xDataFrameEntry);
             uMemTotal += pxDataFrame->xDataFrameIn.uDataLen;
             uMemTotal += sizeof(DataFrame_t) + pxDataFrame->uMkvHdrLen;
             pxListItem = pxListItem->Flink;
+            LOG_DBG("DataFrame %d: %d", i++, uMemTotal);
         }
 
         *puMemTotal = uMemTotal;
