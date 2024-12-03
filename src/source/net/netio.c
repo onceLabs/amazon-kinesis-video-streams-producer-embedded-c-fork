@@ -286,7 +286,9 @@ NetIoHandle NetIo_create(void)
         mbedtls_ssl_config_init(&(_pxNet->xConf));
         mbedtls_ctr_drbg_init(&(_pxNet->xCtrDrbg));
         mbedtls_entropy_init(&(_pxNet->xEntropy));
+#if defined(CONFIG_MBEDTLS_DEBUG_FUNC)
         mbedtls_ssl_conf_dbg(&(_pxNet->xConf), zephyr_mbedtls_debug, NULL);
+#endif
         _pxNet->uRecvTimeoutMs = DEFAULT_CONNECTION_TIMEOUT_MS;
         _pxNet->uSendTimeoutMs = DEFAULT_CONNECTION_TIMEOUT_MS;
 
@@ -314,24 +316,24 @@ void NetIo_terminate(NetIoHandle xNetIoHandle)
         if (pxNet->pRootCA != NULL)
         {
             mbedtls_x509_crt_free(pxNet->pRootCA);
-            kvsFree(pxNet->pRootCA);
+            k_free(pxNet->pRootCA);
             pxNet->pRootCA = NULL;
         }
 
         if (pxNet->pCert != NULL)
         {
             mbedtls_x509_crt_free(pxNet->pCert);
-            kvsFree(pxNet->pCert);
+            k_free(pxNet->pCert);
             pxNet->pCert = NULL;
         }
 
         if (pxNet->pPrivKey != NULL)
         {
             mbedtls_pk_free(pxNet->pPrivKey);
-            kvsFree(pxNet->pPrivKey);
+            k_free(pxNet->pPrivKey);
             pxNet->pPrivKey = NULL;
         }
-        kvsFree(pxNet);
+        k_free(pxNet);
     }
 }
 
@@ -352,6 +354,15 @@ void NetIo_disconnect(NetIoHandle xNetIoHandle)
     if (pxNet != NULL)
     {
         mbedtls_ssl_close_notify(&(pxNet->xSsl));
+    }
+
+    LOG_DBG("Disconnecting socket %d", pxNet->tcpSocket);
+
+    SocketStatus_t returnStatus = Sockets_Disconnect(pxNet->tcpSocket);
+
+    if (returnStatus != SOCKETS_SUCCESS)
+    {
+        LOG_ERR("Failed to disconnect socket %d (err:-%d)", pxNet->tcpSocket, returnStatus);
     }
 }
 
@@ -383,7 +394,7 @@ int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uB
       {
         LOG_DBG("Sending data: bytesRemaining= %d", uBytesRemaining);
         // Log data that is being sent
-        LOG_HEXDUMP_DBG(pIndex, uBytesRemaining, "Data being sent");
+        //LOG_HEXDUMP_DBG(pIndex, uBytesRemaining, "Data being sent");
         tlsStatus = (uint32_t) mbedtls_ssl_write(&(pxNet->xSsl), (const unsigned char *)pIndex, uBytesRemaining);
         if( 
           ( tlsStatus == MBEDTLS_ERR_SSL_TIMEOUT ) ||
@@ -478,12 +489,27 @@ bool NetIo_isDataAvailable(NetIoHandle xNetIoHandle)
 {
     NetIo_t *pxNet = (NetIo_t *)xNetIoHandle;
     bool bDataAvailable = false;
-    struct timeval tv = {0};
-    fd_set read_fds = {0};
-    int fd = 0;
 
-    if (pxNet != NULL)
-    {
+    if (pxNet == NULL) {
+        LOG_ERR("Invalid argument - NetIoHandle is NULL");
+        return bDataAvailable;
+    }
+
+    struct zsock_pollfd pollFds = {
+        .events = ZSOCK_POLLIN,
+        .revents = 0,
+        .fd = pxNet->tcpSocket
+    };
+
+    int pollStatus = zsock_poll( &pollFds, 1, 0 );
+    if ( pollStatus > 0 ) {
+        bDataAvailable = true;
+    }
+    else if (pollStatus < 0) {
+        LOG_ERR("Failed to poll socket: %d", pollStatus);
+    }
+
+    // if (pxNet != NULL) {
         // if (k_fifo_is_empty(&(pxNet->xFd->recv_q)))
         // {
         //     bDataAvailable = false;
@@ -509,7 +535,7 @@ bool NetIo_isDataAvailable(NetIoHandle xNetIoHandle)
         //         }
         //     }
         // }
-    }
+    // }
 
     return bDataAvailable;
 }
@@ -546,20 +572,15 @@ int NetIo_setSendTimeout(NetIoHandle xNetIoHandle, unsigned int uSendTimeoutMs)
     else
     {
         // pxNet->uSendTimeoutMs = (uint32_t)uSendTimeoutMs;
-        // fd = pxNet->xFd.fd;
+        // fd = pxNet->tcpSocket;
         // tv.tv_sec = uSendTimeoutMs / 1000;
         // tv.tv_usec = (uSendTimeoutMs % 1000) * 1000;
 
-        // if (fd < 0)
-        // {
-        //     /* Do nothing when connection hasn't established. */
-        // }
-        // else if (setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (void *)&tv, sizeof(tv)) != 0)
-        // {
+        // if (fd < 0) {
+        //     LOG_WRN("Socket is not connected - can't set send timeout");
+        // } else if (zsock_setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (void *)&tv, sizeof(tv)) != 0) {
         //     res = KVS_ERROR_NETIO_UNABLE_TO_SET_SEND_TIMEOUT;
-        // }
-        // else
-        // {
+        // } else {
         //     /* nop */
         // }
     }

@@ -22,12 +22,14 @@
 
 #define HTTP_METHOD_GET                 "GET"
 #define HTTP_METHOD_POST                "POST"
+#define HTTP_METHOD_PUT                 "PUT"
+
 
 #define URI_QUERY_EMPTY                 ""
 
 /* Headers that needs to be signed in AWS signer V4 */
 #define HDR_CONNECTION                  "connection"
-#define HDR_HOST                        "Host"
+#define HDR_HOST                        "host"
 #define HDR_TRANSFER_ENCODING           "transfer-encoding"
 #define HDR_USER_AGENT                  "user-agent"
 #define HDR_X_AMZ_DATE                  "x-amz-date"
@@ -39,8 +41,8 @@
 #define HDR_X_AMZN_STREAM_NAME          "x-amzn-stream-name"
 
 /* Headers that doesn't need sign */
-#define HDR_ACCEPT                      "accept"
-#define HDR_AUTHORIZATION               "authorization"
+#define HDR_ACCEPT                      "Accept"
+#define HDR_AUTHORIZATION               "Authorization"
 #define HDR_CONTENT_LENGTH              "content-length"
 #define HDR_CONTENT_TYPE                "content-type"
 

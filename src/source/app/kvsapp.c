@@ -261,11 +261,13 @@ static int prvStreamFlushToNextCluster(KvsApp_t *pKvs)
         if (xStreamHandle == NULL)
         {
             res = KVS_ERROR_INVALID_ARGUMENT;
+            LOG_ERR("Invalid argument: xStreamHandle is NULL");
             break;
         }
         else if ((xDataFrameHandle = Kvs_streamPeek(xStreamHandle)) == NULL)
         {
             res = KVS_ERROR_STREAM_NO_AVAILABLE_DATA_FRAME;
+            LOG_ERR("Kvs_streamPeek failed with error %d", res);
             break;
         }
         else
@@ -277,7 +279,8 @@ static int prvStreamFlushToNextCluster(KvsApp_t *pKvs)
                 break;
             }
             else
-            {
+            {   
+                LOG_INF("xCusterType is not MKV_CLUSTER, pop it");
                 xDataFrameHandle = Kvs_streamPop(xStreamHandle);
                 pDataFrameIn = (DataFrameIn_t *)xDataFrameHandle;
                 prvCallOnDataFrameTerminate(pDataFrameIn);
@@ -448,6 +451,7 @@ static int updateAndVerifyRestfulReqParameters(KvsApp_t *pKvs)
 
     if (pKvs->pToken != NULL)
     {
+        LOG_DBG("Initial Access key: %s, new access key: %s", pKvs->xServicePara.pcAccessKey, pKvs->pToken->pAccessKeyId);
         pKvs->xServicePara.pcAccessKey = pKvs->pToken->pAccessKeyId;
         pKvs->xServicePara.pcSecretKey = pKvs->pToken->pSecretAccessKey;
         pKvs->xServicePara.pcToken = pKvs->pToken->pSessionToken;
@@ -503,6 +507,7 @@ static int setupDataEndpoint(KvsApp_t *pKvs)
         else
         {
             LogInfo("Try to describe stream %s", pKvs->xDescPara.pcStreamName);
+            LOG_DBG("token pre describe stream: %s, %s", pKvs->xServicePara.pcAccessKey, pKvs->xServicePara.pcToken);
             if ((res = Kvs_describeStream(&(pKvs->xServicePara), &(pKvs->xDescPara), &uHttpStatusCode)) != KVS_ERRNO_NONE)
             {
                 LogError("Unable to describe stream");
@@ -525,6 +530,7 @@ static int setupDataEndpoint(KvsApp_t *pKvs)
                     res = KVS_GENERATE_RESTFUL_ERROR(uHttpStatusCode);
                 }
             }
+            LOG_DBG("token pre get data endpoint: %s, %s", pKvs->xServicePara.pcAccessKey, pKvs->xServicePara.pcToken);
 
             if (res == KVS_ERRNO_NONE)
             {
@@ -598,8 +604,11 @@ static int createStream(KvsApp_t *pKvs)
 
     if (pKvs->xStreamHandle == NULL)
     {
+        LOG_DBG("Needs new stream buffer");
         if (pKvs->pVideoTrackInfo == NULL && pKvs->pSps != NULL && pKvs->pPps != NULL)
         {
+            LOG_INF("Getting video track info from SPS & PPS");
+            LOG_DBG("SPS: %u, PPS: %u", pKvs->pSps, pKvs->pPps);
             /* We don't have video track info, but we have SPS & PPS to generate video track info from it. */
             if ((res = NALU_getH264VideoResolutionFromSps(pKvs->pSps, pKvs->uSpsLen, &(xVideoTrackInfo.uWidth), &(xVideoTrackInfo.uHeight))) != KVS_ERRNO_NONE ||
                 (res = Mkv_generateH264CodecPrivateDataFromSpsPps(pKvs->pSps, pKvs->uSpsLen, pKvs->pPps, pKvs->uPpsLen, &pCodecPrivateData, &uCodecPrivateDataLen)) != KVS_ERRNO_NONE)
@@ -614,6 +623,7 @@ static int createStream(KvsApp_t *pKvs)
                 xVideoTrackInfo.pCodecPrivate = pCodecPrivateData;
                 xVideoTrackInfo.uCodecPrivateLen = uCodecPrivateDataLen;
                 pKvs->pVideoTrackInfo = prvCopyVideoTrackInfo(&xVideoTrackInfo);
+                LOG_DBG("Video track info is set");
             }
 
             if (pCodecPrivateData != NULL)
@@ -624,6 +634,7 @@ static int createStream(KvsApp_t *pKvs)
 
         if (pKvs->pVideoTrackInfo != NULL)
         {
+            LOG_DBG("Creating stream buffer");
             if ((pKvs->xStreamHandle = Kvs_streamCreate(pKvs->pVideoTrackInfo, pKvs->pAudioTrackInfo)) == NULL)
             {
                 res = KVS_ERROR_FAIL_TO_CREATE_STREAM_HANDLE;
@@ -651,6 +662,7 @@ static int checkAndBuildStream(KvsApp_t *pKvs, uint8_t *pData, size_t uDataLen, 
     if (pKvs->xStreamHandle == NULL)
     {
         /* Try to build video track info from frames. */
+        LOG_DBG("pVideoTrackInfo: %p, pSps: %p", pKvs->pVideoTrackInfo, pKvs->pSps);
         if (pKvs->pVideoTrackInfo == NULL && xTrackType == TRACK_VIDEO)
         {
             if (pKvs->pSps == NULL && NALU_getNaluFromAvccNalus(pData, uDataLen, NALU_TYPE_SPS, &pSps, &uSpsLen) == KVS_ERRNO_NONE)
@@ -1148,6 +1160,7 @@ int KvsApp_setoption(KvsAppHandle handle, const char *pcOptionName, const char *
         }
         else if (strcmp(pcOptionName, (const char *)OPTION_KVS_VIDEO_TRACK_INFO) == 0)
         {
+            LOG_DBG("setoption - Setting video track info");
             if (pValue == NULL)
             {
                 res = KVS_ERROR_INVALID_ARGUMENT;
@@ -1306,6 +1319,7 @@ int KvsApp_open(KvsAppHandle handle)
         }
         else
         {
+            LOG_INF("PUT MEDIA http status code:%d\n", uHttpStatusCode);
             if ((res = createStream(pKvs)) != KVS_ERRNO_NONE)
             {
                 LogError("Failed to setup KVS stream");
@@ -1366,6 +1380,7 @@ int KvsApp_addFrameWithCallbacks(KvsAppHandle handle, uint8_t *pData, size_t uDa
 
     if (pKvs == NULL || pData == NULL || uDataLen == 0)
     {
+        LOG_ERR("pKvs is NULL or pData is NULL or uDataLen is 0");
         res = KVS_ERROR_INVALID_ARGUMENT;
     }
     else if (uTimestamp < pKvs->uEarliestTimestamp)
@@ -1395,6 +1410,7 @@ int KvsApp_addFrameWithCallbacks(KvsAppHandle handle, uint8_t *pData, size_t uDa
     }
     else
     {
+        LOG_DBG("Add frame malloc'd and about to build");
         xDataFrameIn.pData = (char *)pData;
         xDataFrameIn.uDataLen = uDataLen;
         xDataFrameIn.bIsKeyFrame = (xTrackType == TRACK_VIDEO) ? isKeyFrame(pData, uDataLen) : false;

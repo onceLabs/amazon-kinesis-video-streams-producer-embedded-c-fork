@@ -115,6 +115,12 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 #     include(libmbedtls)
 # endif()
 
+# get_cmake_property(_variableNames VARIABLES)
+# list (SORT _variableNames)
+# foreach (_variableName ${_variableNames})
+#     message(STATUS "${_variableName}=${${_variableName}}")
+# endforeach()
+
 include(libllhttp)
 include(libparson)
 include(libaziotsharedutil)

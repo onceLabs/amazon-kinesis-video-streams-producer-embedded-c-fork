@@ -111,7 +111,7 @@ static int prvGenerateHttpReq(const char *pcHttpMethod, const char *pcUri, HTTP_
                     if (newReq == NULL)
                     {
                         res = KVS_ERROR_C_UTIL_STRING_ERROR;
-                        free(pcHeader);
+                        k_free(pcHeader);
                         break;
                     }
 
@@ -120,7 +120,7 @@ static int prvGenerateHttpReq(const char *pcHttpMethod, const char *pcUri, HTTP_
                     strcat(xStHttpReq, "\r\n");
 
                     /* pcHeader was created by HTTPHeaders_GetHeader via malloc */
-                    free(pcHeader);
+                    k_free(pcHeader);
                 }
             }
 
@@ -267,7 +267,7 @@ int Http_executeHttpReq(NetIoHandle xNetIoHandle, const char *pcHttpMethod, cons
     }
 
     k_free(xStHttpReq);
-    //STRING_delete(xStHttpReq);
+    //STRING_delete(xStHttpReq); // TODO is this needed? fix if so
 
     return res;
 }
@@ -336,7 +336,7 @@ int Http_recvHttpRsp(NetIoHandle xNetIoHandle, unsigned int *puHttpStatus, char 
                     res = KVS_ERRNO_NONE;
                     *puHttpStatus = uHttpStatusCode;
 
-                    if ((pRspBody = (char *)kvsMalloc(uBodyLen + 1)) == NULL)
+                    if ((pRspBody = (char *)k_malloc(uBodyLen + 1)) == NULL)
                     {
                         res = KVS_ERROR_OUT_OF_MEMORY;
                         LogError("OOM pRspBody");

@@ -14,6 +14,7 @@
  */
 
 #include <stdlib.h>
+#include <zephyr/kernel.h>
 
 /* Public headers */
 #include "kvs/pool_allocator.h"
@@ -45,22 +46,22 @@
 
 void *kvsMalloc(size_t bytes)
 {
-    return malloc(bytes);
+    return k_malloc(bytes);
 }
 
 void *kvsRealloc(void *ptr, size_t bytes)
 {
-    return realloc(ptr, bytes);
+    return k_realloc(ptr, bytes);
 }
 
 void *kvsCalloc(size_t num, size_t bytes)
 {
-    return calloc(num, bytes);
+    return k_calloc(num, bytes);
 }
 
 void kvsFree(void *ptr)
 {
-    free(ptr);
+    k_free(ptr);
 }
 
 /**
