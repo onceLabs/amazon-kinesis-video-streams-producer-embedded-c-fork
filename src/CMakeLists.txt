@@ -4,6 +4,8 @@ set(LIB_NAME "kvs-embedded-c")
 
 find_package(MBedTLS)
 
+set(THEIA_NXP ON)
+
 # compiled as C99
 set(CMAKE_C_FLAGS "--std=c99 ${CMAKE_C_FLAGS}")
 
@@ -14,13 +16,8 @@ set(CMAKE_CXX_FLAGS "--std=c++11 ${CMAKE_CXX_FLAGS}")
 set(CMAKE_C_FLAGS "-D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200112L ${CMAKE_C_FLAGS}")
 
 set(LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-<<<<<<< Updated upstream
-set(ZEPHYR_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../zephyr)
-set(ZEPHYR_MODUELS_DIR ${ZEPHYR_DIR}/../../../modules)
-=======
 set(ZEPHYR_DIR ${LIB_DIR}/../../../../../zephyr)
 set(ZEPHYR_MODUELS_DIR ${LIB_DIR}/../../../../../modules)
->>>>>>> Stashed changes
 
 add_definitions(-DCONFIG_ARM)
 add_definitions(-DCONFIG_MP_MAX_NUM_CPUS=1)
@@ -31,7 +28,7 @@ add_definitions(-DMBEDTLS_USE_PSA_CRYPTO)
 include_directories(${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include)
 
 set(LIB_SRC
-    ${GENERATED_HEADERS_DIR}/zephyr/autoconf.h
+    ${GENERATED_HEADERS_DIR}/autoconf.h
     ${LIB_DIR}/include/kvs/kvsapp.h
     ${LIB_DIR}/include/kvs/kvsapp_options.h
     ${LIB_DIR}/include/kvs/errors.h
@@ -58,7 +55,7 @@ set(LIB_SRC
     ${LIB_DIR}/source/os/allocator.h
     ${LIB_DIR}/source/os/endian.h
     ${LIB_DIR}/source/os/pool_allocator.c
-    ${LIB_DIR}/source/restful/aws_signer_v4_zephyr.c
+    ${LIB_DIR}/source/restful/aws_signer_v4.c
     ${LIB_DIR}/source/restful/aws_signer_v4.h
     ${LIB_DIR}/source/restful/iot/iot_credential_provider.c
     ${LIB_DIR}/source/restful/kvs/restapi_kvs.c
@@ -66,8 +63,12 @@ set(LIB_SRC
     ${LIB_DIR}/source/transport/sockets_zephyr.c
     ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include/mbedtls/ctr_drbg.h
     ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include/mbedtls/entropy.h
-    ${LIB_DIR}/source/os/zephyr_fixes.c
 )
+
+# nRF side of stuff had (needs?/needed):
+# -    ${LIB_DIR}/source/os/zephyr_fixes.c
+# -    ${LIB_DIR}/source/restful/aws_signer_v4_zephyr.c
+# +    ${LIB_DIR}/source/restful/aws_signer_v4.c
 
 set(LIB_PUB_INC
     ${LIB_DIR}/include
@@ -79,6 +80,7 @@ set(LIB_PUB_INC
     ${GENERATED_HEADERS_DIR}/zephyr/syscalls
     ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include/mbedtls
     ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include
+    ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/library
     ${ZEPHYR_DIR}/modules/mbedtls/include
 )
 
@@ -146,11 +148,19 @@ target_link_libraries(${LIB_NAME} PUBLIC
     ${LINK_LIBS}
 )
 
-target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedtls.a)
-target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedcrypto_base.a)
-target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedcrypto.a)
-target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedx509.a)
-
+if (${THEIA__NRF})
+    target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedtls.a)
+    target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedcrypto_base.a)
+    target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedcrypto.a)
+    target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedx509.a)
+elseif (${THEIA_NXP})
+    message(STATUS "Linking against NXP mbedtls")
+    target_link_libraries(${LIB_NAME} PUBLIC 
+        ${CMAKE_BINARY_DIR}/modules/mbedtls/libmbedTLSBase.a
+        ${CMAKE_BINARY_DIR}/modules/mbedtls/libmbedTLSCrypto.a
+        ${CMAKE_BINARY_DIR}/modules/mbedtls/libmbedTLSX509.a
+        ${CMAKE_BINARY_DIR}/modules/mbedtls/libmodules__mbedtls.a)
+endif()
 
 # zephyr_library_link_libraries(mbedTLS)
 # Zephyr specific

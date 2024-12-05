@@ -18,12 +18,7 @@
 #include <string.h>
 
 #include <sys/time.h>
-<<<<<<< Updated upstream
-#include <socket.h>
-#include <zephyr/kernel.h>
-=======
 // #include <socket.h>
->>>>>>> Stashed changes
 #include <zephyr/net/socket.h>
 /* Third party headers */
 #include "azure_c_shared_utility/xlogging.h"
@@ -146,6 +141,7 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
             mbedtls_ssl_set_hostname(&(pxNet->xSsl), pcHost);
             mbedtls_ssl_conf_read_timeout(&(pxNet->xConf), pxNet->uRecvTimeoutMs);
             NetIo_setSendTimeout(pxNet, pxNet->uSendTimeoutMs);
+
 
             if (pcRootCA != NULL && pcCert != NULL && pcPrivKey != NULL)
             {
@@ -316,24 +312,24 @@ void NetIo_terminate(NetIoHandle xNetIoHandle)
         if (pxNet->pRootCA != NULL)
         {
             mbedtls_x509_crt_free(pxNet->pRootCA);
-            k_free(pxNet->pRootCA);
+            kvsFree(pxNet->pRootCA);
             pxNet->pRootCA = NULL;
         }
 
         if (pxNet->pCert != NULL)
         {
             mbedtls_x509_crt_free(pxNet->pCert);
-            k_free(pxNet->pCert);
+            kvsFree(pxNet->pCert);
             pxNet->pCert = NULL;
         }
 
         if (pxNet->pPrivKey != NULL)
         {
             mbedtls_pk_free(pxNet->pPrivKey);
-            k_free(pxNet->pPrivKey);
+            kvsFree(pxNet->pPrivKey);
             pxNet->pPrivKey = NULL;
         }
-        k_free(pxNet);
+        kvsFree(pxNet);
     }
 }
 
@@ -394,7 +390,7 @@ int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uB
       {
         LOG_DBG("Sending data: bytesRemaining= %d", uBytesRemaining);
         // Log data that is being sent
-        //LOG_HEXDUMP_DBG(pIndex, uBytesRemaining, "Data being sent");
+        // LOG_HEXDUMP_DBG(pIndex, uBytesRemaining, "Data being sent");
         tlsStatus = (uint32_t) mbedtls_ssl_write(&(pxNet->xSsl), (const unsigned char *)pIndex, uBytesRemaining);
         if( 
           ( tlsStatus == MBEDTLS_ERR_SSL_TIMEOUT ) ||
@@ -489,7 +485,7 @@ bool NetIo_isDataAvailable(NetIoHandle xNetIoHandle)
 {
     NetIo_t *pxNet = (NetIo_t *)xNetIoHandle;
     bool bDataAvailable = false;
-
+    
     if (pxNet == NULL) {
         LOG_ERR("Invalid argument - NetIoHandle is NULL");
         return bDataAvailable;
@@ -508,34 +504,6 @@ bool NetIo_isDataAvailable(NetIoHandle xNetIoHandle)
     else if (pollStatus < 0) {
         LOG_ERR("Failed to poll socket: %d", pollStatus);
     }
-
-    // if (pxNet != NULL) {
-        // if (k_fifo_is_empty(&(pxNet->xFd->recv_q)))
-        // {
-        //     bDataAvailable = false;
-        // }
-        // else
-        // {
-        //     bDataAvailable = true;
-        // }
-        // fd = pxNet->xFd.fd;
-        // if (fd >= 0)
-        // {
-        //     FD_ZERO(&read_fds);
-        //     FD_SET(fd, &read_fds);
-
-        //     tv.tv_sec = 0;
-        //     tv.tv_usec = 0;
-
-        //     if (select(fd + 1, &read_fds, NULL, NULL, &tv) >= 0)
-        //     {
-        //         if (FD_ISSET(fd, &read_fds))
-        //         {
-        //             bDataAvailable = true;
-        //         }
-        //     }
-        // }
-    // }
 
     return bDataAvailable;
 }
@@ -572,15 +540,20 @@ int NetIo_setSendTimeout(NetIoHandle xNetIoHandle, unsigned int uSendTimeoutMs)
     else
     {
         // pxNet->uSendTimeoutMs = (uint32_t)uSendTimeoutMs;
-        // fd = pxNet->tcpSocket;
+        // fd = pxNet->xFd.fd;
         // tv.tv_sec = uSendTimeoutMs / 1000;
         // tv.tv_usec = (uSendTimeoutMs % 1000) * 1000;
 
-        // if (fd < 0) {
-        //     LOG_WRN("Socket is not connected - can't set send timeout");
-        // } else if (zsock_setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (void *)&tv, sizeof(tv)) != 0) {
+        // if (fd < 0)
+        // {
+        //     /* Do nothing when connection hasn't established. */
+        // }
+        // else if (setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, (void *)&tv, sizeof(tv)) != 0)
+        // {
         //     res = KVS_ERROR_NETIO_UNABLE_TO_SET_SEND_TIMEOUT;
-        // } else {
+        // }
+        // else
+        // {
         //     /* nop */
         // }
     }
