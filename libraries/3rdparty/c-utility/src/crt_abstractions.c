@@ -14,6 +14,8 @@
 #include "azure_c_shared_utility/optimize_size.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
 
+#include <zephyr/kernel.h>
+
 // VS 2008 does not have INFINITY and all the nice goodies...
 #if defined (TIZENRT)
 #define DEFINE_INFINITY 1

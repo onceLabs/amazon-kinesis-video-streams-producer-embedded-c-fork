@@ -4,6 +4,8 @@
 
 #include "llhttp.h"
 
+#include <zephyr/kernel.h>
+
 #define CALLBACK_MAYBE(PARSER, NAME)                                          \
   do {                                                                        \
     const llhttp_settings_t* settings;                                        \
