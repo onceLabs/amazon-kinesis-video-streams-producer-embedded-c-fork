@@ -27,7 +27,7 @@
 #include "codec/sps_decode.h"
 #include "os/endian.h"
 
-#define MAX_NALU_COUNT_IN_A_FRAME ( 16 )
+#define MAX_NALU_COUNT_IN_A_FRAME (16*5) //( 16 ) TODO fix this IMPORTANT
 
 typedef struct Nal
 {
