@@ -603,8 +603,13 @@ static void prvLogPendingFragmentAcks(PutMedia_t *pPutMedia)
     PDLIST_ENTRY pxListHead = NULL;
     PDLIST_ENTRY pxListItem = NULL;
     FragmentAck_t *pFragmentAck = NULL;
+    int ret = 0;
 
+<<<<<<< HEAD
     if (pPutMedia != NULL && k_mutex_lock((pPutMedia->xLockMutex), K_FOREVER) == 0)//Lock(pPutMedia->xLock) == LOCK_OK)
+=======
+    if (pPutMedia != NULL && !(ret = k_mutex_lock(pPutMedia->xLockMutex, K_FOREVER)))//Lock(pPutMedia->xLock) == LOCK_OK)
+>>>>>>> development
     {
         pxListHead = &(pPutMedia->xPendingFragmentAcks);
         pxListItem = pxListHead->Flink;
@@ -619,12 +624,18 @@ static void prvLogPendingFragmentAcks(PutMedia_t *pPutMedia)
         //Unlock(pPutMedia->xLock);
         k_mutex_unlock((pPutMedia->xLockMutex));
     }
+    if (ret == -EBUSY || ret == -EAGAIN) {
+        LogError("mutex failed to lock with valid response: %d", ret);
+    } else if (ret != 0) {
+        LogError("mutex failed to lock with error: %d", ret);
+    }
 }
 
 static int prvPushFragmentAck(PutMedia_t *pPutMedia, FragmentAck_t *pFragmentAckSrc)
 {
     int res = KVS_ERRNO_NONE;
     FragmentAck_t *pFragmentAck = NULL;
+    int ret = 0;
 
     if (pPutMedia == NULL || pFragmentAckSrc == NULL)
     {
@@ -639,8 +650,13 @@ static int prvPushFragmentAck(PutMedia_t *pPutMedia, FragmentAck_t *pFragmentAck
         memcpy(pFragmentAck, pFragmentAckSrc, sizeof(FragmentAck_t));
         DList_InitializeListHead(&(pFragmentAck->xAckEntry));
 
+<<<<<<< HEAD
         if (k_mutex_lock((pPutMedia->xLockMutex), K_FOREVER) == 0)//Lock(pPutMedia->xLock) != LOCK_OK)
+=======
+        if (ret = k_mutex_lock(pPutMedia->xLockMutex, K_FOREVER))//Lock(pPutMedia->xLock) != LOCK_OK)
+>>>>>>> development
         {
+            LOG_ERR("Failed to lock mutex with error: %d", ret);
             res = KVS_ERROR_LOCK_ERROR;
         }
         else
@@ -711,8 +727,13 @@ static FragmentAck_t *prvReadFragmentAck(PutMedia_t *pPutMedia)
     PDLIST_ENTRY pxListHead = NULL;
     PDLIST_ENTRY pxListItem = NULL;
     FragmentAck_t *pFragmentAck = NULL;
+    int ret = 0;
 
+<<<<<<< HEAD
     if (!k_mutex_lock((pPutMedia->xLockMutex), K_FOREVER))//Lock(pPutMedia->xLock) == LOCK_OK)
+=======
+    if (!(ret = k_mutex_lock(pPutMedia->xLockMutex, K_FOREVER)))//Lock(pPutMedia->xLock) == LOCK_OK)
+>>>>>>> development
     {
         if (!DList_IsListEmpty(&(pPutMedia->xPendingFragmentAcks)))
         {
@@ -722,6 +743,8 @@ static FragmentAck_t *prvReadFragmentAck(PutMedia_t *pPutMedia)
         }
         //Unlock(pPutMedia->xLock);
         k_mutex_unlock(pPutMedia->xLockMutex);
+    } else {
+        LogError("Failed to lock mutex with error: %d", ret);
     }
 
     return pFragmentAck;
