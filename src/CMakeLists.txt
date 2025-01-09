@@ -16,16 +16,24 @@ set(CMAKE_CXX_FLAGS "--std=c++11 ${CMAKE_CXX_FLAGS}")
 set(CMAKE_C_FLAGS "-D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200112L ${CMAKE_C_FLAGS}")
 
 set(LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(ZEPHYR_DIR ${LIB_DIR}/../../../../../zephyr)
-set(ZEPHYR_MODUELS_DIR ${LIB_DIR}/../../../../../modules)
+if(${THEIA_NXP})
+    set(ZEPHYR_DIR ${LIB_DIR}/../../../../../zephyr)
+    set(ZEPHYR_MODUELS_DIR ${LIB_DIR}/../../../../../modules)
+elseif(${THEIA_NRF})
+    set(ZEPHYR_DIR /opt/nordic/ncs/v2.7.0/zephyr)
+    set(ZEPHYR_MODUELS_DIR /opt/nordic/ncs/v2.7.0/modules)
+endif()
 
 add_definitions(-DCONFIG_ARM)
 add_definitions(-DCONFIG_MP_MAX_NUM_CPUS=1)
 add_definitions(-DMBEDTLS_DEBUG_C)
-add_definitions(-DMBEDTLS_PK_PARSE_C)
-add_definitions(-DMBEDTLS_USE_PSA_CRYPTO)
 
-include_directories(${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include)
+if(${THEIA_NXP})
+    add_definitions(-DMBEDTLS_PK_PARSE_C)
+    add_definitions(-DMBEDTLS_USE_PSA_CRYPTO)
+
+    include_directories(${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include)
+endif()
 
 set(LIB_SRC
     ${GENERATED_HEADERS_DIR}/autoconf.h
@@ -55,7 +63,6 @@ set(LIB_SRC
     ${LIB_DIR}/source/os/allocator.h
     ${LIB_DIR}/source/os/endian.h
     ${LIB_DIR}/source/os/pool_allocator.c
-    ${LIB_DIR}/source/restful/aws_signer_v4.c
     ${LIB_DIR}/source/restful/aws_signer_v4.h
     ${LIB_DIR}/source/restful/iot/iot_credential_provider.c
     ${LIB_DIR}/source/restful/kvs/restapi_kvs.c
@@ -65,24 +72,41 @@ set(LIB_SRC
     ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include/mbedtls/entropy.h
 )
 
-# nRF side of stuff had (needs?/needed):
-# -    ${LIB_DIR}/source/os/zephyr_fixes.c
-# -    ${LIB_DIR}/source/restful/aws_signer_v4_zephyr.c
-# +    ${LIB_DIR}/source/restful/aws_signer_v4.c
+if (${THEIA_NRF})
+    set(LIB_SRC ${LIB_SRC}
+        ${LIB_DIR}/source/os/zephyr_fixes.c
+        ${LIB_DIR}/source/restful/aws_signer_v4_zephyr.c
+    )
+elseif(${THEIA_NXP})
+    set(LIB_SRC ${LIB_SRC}
+        ${LIB_DIR}/source/restful/aws_signer_v4.c
+    )
+endif()
 
 set(LIB_PUB_INC
     ${LIB_DIR}/include
     ${ZEPHYR_DIR}/include/zephyr/net
     ${ZEPHYR_DIR}/include
-    ${ZEPHYR_DIR}/../modules/crypto/mbedtls/include
     ${ZEPHYR_DIR}/subsys/testsuite/ztest/include/zephyr
-    ${GENERATED_HEADERS_DIR}/zephyr
-    ${GENERATED_HEADERS_DIR}/zephyr/syscalls
     ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include/mbedtls
-    ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include
-    ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/library
-    ${ZEPHYR_DIR}/modules/mbedtls/include
 )
+
+if(${THEIA_NXP})
+    set(LIB_PUB_INC ${LIB_PUB_INC}
+        ${ZEPHYR_DIR}/../modules/crypto/mbedtls/include
+        ${GENERATED_HEADERS_DIR}/zephyr
+        ${GENERATED_HEADERS_DIR}/zephyr/syscalls
+        ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include
+        ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/library
+        ${ZEPHYR_DIR}/modules/mbedtls/include
+    )
+elseif(${THEIA_NRF})
+    set(LIB_PUB_INC ${LIB_PUB_INC}
+        ${GENERATED_HEADERS_DIR}
+        ${GENERATED_HEADERS_DIR}/syscalls
+
+    )
+endif()
 
 set(LIB_PRV_INC
     ${LIB_DIR}/source
@@ -148,7 +172,7 @@ target_link_libraries(${LIB_NAME} PUBLIC
     ${LINK_LIBS}
 )
 
-if (${THEIA__NRF})
+if (${THEIA_NRF})
     target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedtls.a)
     target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedcrypto_base.a)
     target_link_libraries(${LIB_NAME} PUBLIC ${CMAKE_BINARY_DIR}/modules/nrf/subsys/nrf_security/src/libmbedcrypto.a)

@@ -618,7 +618,7 @@ static void prvLogPendingFragmentAcks(PutMedia_t *pPutMedia)
         }
 
         //Unlock(pPutMedia->xLock);
-        k_mutex_unlock(pPutMedia->xLockMutex);
+        k_mutex_unlock((pPutMedia->xLockMutex));
     }
     if (ret == -EBUSY || ret == -EAGAIN) {
         LogError("mutex failed to lock with valid response: %d", ret);
@@ -656,7 +656,7 @@ static int prvPushFragmentAck(PutMedia_t *pPutMedia, FragmentAck_t *pFragmentAck
             DList_InsertTailList(&(pPutMedia->xPendingFragmentAcks), &(pFragmentAck->xAckEntry));
 
             //Unlock(pPutMedia->xLock);
-            k_mutex_unlock(pPutMedia->xLockMutex);
+            k_mutex_unlock((pPutMedia->xLockMutex));
         }
     }
 
