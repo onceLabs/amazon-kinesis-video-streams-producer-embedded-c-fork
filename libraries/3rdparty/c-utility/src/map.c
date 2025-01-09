@@ -21,27 +21,27 @@ typedef struct MAP_HANDLE_DATA_TAG
     MAP_FILTER_CALLBACK mapFilterCallback;
 }MAP_HANDLE_DATA;
 
-static void *k_realloc(void *ptr, size_t new_size) {
-    if (ptr == NULL) {
-        return k_malloc(new_size);
-    }
+// static void *k_realloc(void *ptr, size_t new_size) {
+//     if (ptr == NULL) {
+//         return k_malloc(new_size);
+//     }
 
-    if (new_size == 0) {
-        k_free(ptr);
-        return NULL;
-    }
+//     if (new_size == 0) {
+//         k_free(ptr);
+//         return NULL;
+//     }
 
-    void *new_ptr = k_malloc(new_size);
-    if (new_ptr == NULL) {
-        return NULL;
-    }
+//     void *new_ptr = k_malloc(new_size);
+//     if (new_ptr == NULL) {
+//         return NULL;
+//     }
 
-    // Copy the old data to the new block of memory
-    memcpy(new_ptr, ptr, new_size);
-    k_free(ptr);
+//     // Copy the old data to the new block of memory
+//     memcpy(new_ptr, ptr, new_size);
+//     k_free(ptr);
 
-    return new_ptr;
-}
+//     return new_ptr;
+// }
 
 #define LOG_MAP_ERROR LogError("result = %" PRI_MU_ENUM "", MU_ENUM_VALUE(MAP_RESULT, result));
 

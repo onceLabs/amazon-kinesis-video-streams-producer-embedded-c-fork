@@ -22,27 +22,27 @@
 /* Internal headers */
 #include "allocator.h"
 
-static void *k_realloc(void *ptr, size_t new_size) {
-    if (ptr == NULL) {
-        return k_malloc(new_size);
-    }
+// static void *k_realloc(void *ptr, size_t new_size) {
+//     if (ptr == NULL) {
+//         return k_malloc(new_size);
+//     }
 
-    if (new_size == 0) {
-        k_free(ptr);
-        return NULL;
-    }
+//     if (new_size == 0) {
+//         k_free(ptr);
+//         return NULL;
+//     }
 
-    void *new_ptr = k_malloc(new_size);
-    if (new_ptr == NULL) {
-        return NULL;
-    }
+//     void *new_ptr = k_malloc(new_size);
+//     if (new_ptr == NULL) {
+//         return NULL;
+//     }
 
-    // Copy the old data to the new block of memory
-    memcpy(new_ptr, ptr, new_size);
-    k_free(ptr);
+//     // Copy the old data to the new block of memory
+//     memcpy(new_ptr, ptr, new_size);
+//     k_free(ptr);
 
-    return new_ptr;
-}
+//     return new_ptr;
+// }
 
 void *kvsMalloc(size_t bytes)
 {
