@@ -1705,5 +1705,4 @@ void test_check_signature()
         k_free(xStHttpReq);
         xStHttpReq = NULL;
     }
-
 }
