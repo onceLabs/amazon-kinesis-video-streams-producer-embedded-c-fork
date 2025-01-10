@@ -5,6 +5,8 @@ project(llhttp C)
 
 set(CMAKE_C_STANDARD 99)
 
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+
 #
 # Options
 #
@@ -20,6 +22,7 @@ set(LLHTTP_SOURCES
 
 set(LLHTTP_HEADERS
   include/llhttp.h
+  ${ZEPHYR_DIR}/include
 )
 
 add_library(llhttp)
@@ -32,6 +35,16 @@ target_sources(llhttp PRIVATE ${LLHTTP_SOURCES} ${LLHTTP_HEADERS})
 if(MSVC)
   set(CMAKE_DEBUG_POSTFIX "d")
 endif()
+
+target_link_libraries(llhttp PRIVATE
+  zephyr_interface
+  zephyr_kernel
+  zephyr_libc
+  zephyr_minimal
+  zephyr_posix
+  zephyr_syscall
+  zephyr_types
+)
 
 target_include_directories(llhttp PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

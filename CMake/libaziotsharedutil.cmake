@@ -17,7 +17,11 @@ set(AZURE_C_SHARED_UTILITY_INC
     ${AZURE_C_SHARED_UTILITY_DIR}/inc
     ${AZURE_C_SHARED_UTILITY_DIR}/deps/azure-macro-utils-c/inc
     ${AZURE_C_SHARED_UTILITY_DIR}/deps/umock-c/inc
+    
+    ${ZEPHYR_DIR}/include
 )
+
+zephyr_library_include_directories(${AZURE_C_SHARED_UTILITY_INC})
 
 # setup static library
 add_library(aziotsharedutil STATIC ${AZURE_C_SHARED_UTILITY_SRC})
@@ -31,6 +35,16 @@ target_include_directories(aziotsharedutil PRIVATE ${ZEPHYR_BASE}/include)
 target_link_libraries(aziotsharedutil PUBLIC
     mbedtls mbedcrypto mbedx509
     m
+)
+
+target_link_libraries(aziotsharedutil PRIVATE
+  zephyr_interface
+  zephyr_kernel
+  zephyr_libc
+  zephyr_minimal
+  zephyr_posix
+  zephyr_syscall
+  zephyr_types
 )
 
 include(GNUInstallDirs)

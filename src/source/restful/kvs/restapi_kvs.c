@@ -17,6 +17,7 @@
 #include <inttypes.h>
 #include <stddef.h>
 #include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
 /* Thirdparty headers */
 #include "azure_c_shared_utility/buffer_.h"
 #include "azure_c_shared_utility/doublylinkedlist.h"
@@ -40,11 +41,15 @@
 #include "net/http_helper.h"
 #include "net/netio.h"
 
+#include "kvs/zephyr_fixes.h"
+
+LOG_MODULE_REGISTER(restapi, LOG_LEVEL_DBG);
+
 #ifndef SAFE_FREE
 #define SAFE_FREE(a) \
     do               \
     {                \
-        kvsFree(a);  \
+        k_free(a);  \
         a = NULL;    \
     } while (0)
 #endif /* SAFE_FREE */
@@ -82,7 +87,7 @@ typedef struct
 typedef struct PutMedia
 {
     //LOCK_HANDLE xLock;
-    struct k_mutex_t *xLockMutex;
+    struct k_mutex *xLockMutex;
 
     NetIoHandle xNetIoHandle;
     DLIST_ENTRY xPendingFragmentAcks;
@@ -170,75 +175,123 @@ static AwsSigV4Handle prvSign(KvsServiceParameter_t *pServPara, char *pcUri, cha
     const char *pcVal;
     const char *pcXAmzDate;
 
-    if ((xAwsSigV4Handle = AwsSigV4_Create(HTTP_METHOD_POST, pcUri, pcQuery)) == NULL)
-    {
+    // Create empty canonical request
+    if ((xAwsSigV4Handle = AwsSigV4_Create(HTTP_METHOD_POST, pcUri, pcQuery)) == NULL) {
         res = KVS_ERROR_FAIL_TO_CREATE_SIGV4_HANDLE;
     }
-    else if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_CONNECTION)) != NULL && AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_CONNECTION, pcVal) != KVS_ERRNO_NONE)
-    {
+
+    // Connection header
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_CONNECTION)) != NULL && 
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_CONNECTION, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_HOST)) != NULL && AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_HOST, pcVal) != KVS_ERRNO_NONE)
-    {
+
+    // Host header
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_HOST)) != NULL && 
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_HOST, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if (
-        (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_TRANSFER_ENCODING)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_TRANSFER_ENCODING, pcVal) != KVS_ERRNO_NONE)
-    {
+
+    // transfer-encoding header
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_TRANSFER_ENCODING)) != NULL &&
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_TRANSFER_ENCODING, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if ((pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_USER_AGENT)) != NULL && AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_USER_AGENT, pcVal) != KVS_ERRNO_NONE)
-    {
+
+    // user-agent header
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_USER_AGENT)) != NULL && 
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_USER_AGENT, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if (
-        (pcXAmzDate = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZ_DATE)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZ_DATE, pcXAmzDate) != KVS_ERRNO_NONE)
-    {
+
+    // range header - for testing
+    #define HDR_RANGE "range"
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_RANGE)) != NULL && 
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_RANGE, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if (
-        (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZ_SECURITY_TOKEN)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZ_SECURITY_TOKEN, pcVal) != KVS_ERRNO_NONE)
-    {
+
+    // x-amz-content-sha256 header
+    #define HDR_X_AMZ_CONTENT_SHA256 "x-amz-content-sha256"
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZ_CONTENT_SHA256)) != NULL && 
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZ_CONTENT_SHA256, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if (
-        (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_FRAG_ACK_REQUIRED)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_FRAG_ACK_REQUIRED, pcVal) != KVS_ERRNO_NONE)
-    {
+
+    // x-amz-date header
+    if (
+      (pcXAmzDate = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZ_DATE)) != NULL &&  
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZ_DATE, pcXAmzDate) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if (
-        (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_FRAG_T_TYPE)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_FRAG_T_TYPE, pcVal) != KVS_ERRNO_NONE)
-    {
+
+    memset((void *)&pcVal, 0, sizeof(pcVal));
+    // x-amz-security-token header
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZ_SECURITY_TOKEN)) != NULL &&
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZ_SECURITY_TOKEN, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if (
-        (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_PRODUCER_START_T)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_PRODUCER_START_T, pcVal) != KVS_ERRNO_NONE)
-    {
+    LOG_DBG("pcVal session-token: %s", pcVal);
+
+    // x-amzn-fragment-acknowledgment-required header
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_FRAG_ACK_REQUIRED)) != NULL &&
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_FRAG_ACK_REQUIRED, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if (
-        (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_STREAM_NAME)) != NULL &&
-        AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_STREAM_NAME, pcVal) != KVS_ERRNO_NONE)
-    {
+
+    // x-amzn-fragment-timecode-type header
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_FRAG_T_TYPE)) != NULL &&
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_FRAG_T_TYPE, pcVal) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
     }
-    else if (AwsSigV4_AddCanonicalBody(xAwsSigV4Handle, pcHttpBody, strlen(pcHttpBody)) != KVS_ERRNO_NONE)
-    {
+
+    // x-amzn-producer-start-timestamp header
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_PRODUCER_START_T)) != NULL &&
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_PRODUCER_START_T, pcVal) != KVS_ERRNO_NONE
+    ) {
+        res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
+    }
+
+    // x-amzn-stream-name header
+    if (
+      (pcVal = HTTPHeaders_FindHeaderValue(xHeadersToSign, HDR_X_AMZN_STREAM_NAME)) != NULL &&
+      AwsSigV4_AddCanonicalHeader(xAwsSigV4Handle, HDR_X_AMZN_STREAM_NAME, pcVal) != KVS_ERRNO_NONE
+    ) {
+        res = KVS_ERROR_FAIL_TO_ADD_CANONICAL_HEADER;
+    }
+
+    // Add body to canonical request
+    if (
+      AwsSigV4_AddCanonicalBody(xAwsSigV4Handle, pcHttpBody, strlen(pcHttpBody)) != KVS_ERRNO_NONE
+    ) {
         res = KVS_ERRNO_FAIL;
     }
-    else if ((res = AwsSigV4_Sign(xAwsSigV4Handle, pServPara->pcAccessKey, pServPara->pcSecretKey, pServPara->pcRegion, pServPara->pcService, pcXAmzDate)) != KVS_ERRNO_NONE)
-    {
+
+    // Sign the request
+    LOG_DBG("Signing the request: pcAccessKey: %s", pServPara->pcAccessKey);
+    if (
+      (res = AwsSigV4_Sign(xAwsSigV4Handle, pServPara->pcAccessKey, pServPara->pcSecretKey, pServPara->pcRegion, pServPara->pcService, pcXAmzDate)) != KVS_ERRNO_NONE) {
         /* Propagate the res error */
-    }
-    else
-    {
-        /* nop */
     }
 
     if (res != KVS_ERRNO_NONE)
@@ -550,8 +603,9 @@ static void prvLogPendingFragmentAcks(PutMedia_t *pPutMedia)
     PDLIST_ENTRY pxListHead = NULL;
     PDLIST_ENTRY pxListItem = NULL;
     FragmentAck_t *pFragmentAck = NULL;
+    int ret = 0;
 
-    if (pPutMedia != NULL && k_mutex_lock(pPutMedia->xLockMutex, K_FOREVER))//Lock(pPutMedia->xLock) == LOCK_OK)
+    if (pPutMedia != NULL && !(ret = k_mutex_lock(pPutMedia->xLockMutex, K_FOREVER)))//Lock(pPutMedia->xLock) == LOCK_OK)
     {
         pxListHead = &(pPutMedia->xPendingFragmentAcks);
         pxListItem = pxListHead->Flink;
@@ -564,7 +618,12 @@ static void prvLogPendingFragmentAcks(PutMedia_t *pPutMedia)
         }
 
         //Unlock(pPutMedia->xLock);
-        k_mutex_unlock(pPutMedia->xLockMutex);
+        k_mutex_unlock((pPutMedia->xLockMutex));
+    }
+    if (ret == -EBUSY || ret == -EAGAIN) {
+        LogError("mutex failed to lock with valid response: %d", ret);
+    } else if (ret != 0) {
+        LogError("mutex failed to lock with error: %d", ret);
     }
 }
 
@@ -572,6 +631,7 @@ static int prvPushFragmentAck(PutMedia_t *pPutMedia, FragmentAck_t *pFragmentAck
 {
     int res = KVS_ERRNO_NONE;
     FragmentAck_t *pFragmentAck = NULL;
+    int ret = 0;
 
     if (pPutMedia == NULL || pFragmentAckSrc == NULL)
     {
@@ -586,8 +646,9 @@ static int prvPushFragmentAck(PutMedia_t *pPutMedia, FragmentAck_t *pFragmentAck
         memcpy(pFragmentAck, pFragmentAckSrc, sizeof(FragmentAck_t));
         DList_InitializeListHead(&(pFragmentAck->xAckEntry));
 
-        if (k_mutex_lock(pPutMedia->xLockMutex, K_FOREVER))//Lock(pPutMedia->xLock) != LOCK_OK)
+        if (ret = k_mutex_lock(pPutMedia->xLockMutex, K_FOREVER))//Lock(pPutMedia->xLock) != LOCK_OK)
         {
+            LOG_ERR("Failed to lock mutex with error: %d", ret);
             res = KVS_ERROR_LOCK_ERROR;
         }
         else
@@ -595,7 +656,7 @@ static int prvPushFragmentAck(PutMedia_t *pPutMedia, FragmentAck_t *pFragmentAck
             DList_InsertTailList(&(pPutMedia->xPendingFragmentAcks), &(pFragmentAck->xAckEntry));
 
             //Unlock(pPutMedia->xLock);
-            k_mutex_unlock(pPutMedia->xLockMutex);
+            k_mutex_unlock((pPutMedia->xLockMutex));
         }
     }
 
@@ -622,10 +683,10 @@ static PutMedia_t *prvCreateDefaultPutMediaHandle()
     }
     else
     {
-        pPutMedia->xLockMutex = &wrapper_mutex;
         memset(pPutMedia, 0, sizeof(PutMedia_t));
+        pPutMedia->xLockMutex = &wrapper_mutex;
 
-        if (k_mutex_init(pPutMedia->xLockMutex))//(pPutMedia->xLock = Lock_Init()) == NULL)
+        if (k_mutex_init((pPutMedia->xLockMutex)))//(pPutMedia->xLock = Lock_Init()) == NULL)
         {
             res = KVS_ERROR_LOCK_ERROR;
             LogError("Failed to initialize lock");
@@ -658,8 +719,9 @@ static FragmentAck_t *prvReadFragmentAck(PutMedia_t *pPutMedia)
     PDLIST_ENTRY pxListHead = NULL;
     PDLIST_ENTRY pxListItem = NULL;
     FragmentAck_t *pFragmentAck = NULL;
+    int ret = 0;
 
-    if (k_mutex_lock(pPutMedia->xLockMutex, K_FOREVER))//Lock(pPutMedia->xLock) == LOCK_OK)
+    if (!(ret = k_mutex_lock(pPutMedia->xLockMutex, K_FOREVER)))//Lock(pPutMedia->xLock) == LOCK_OK)
     {
         if (!DList_IsListEmpty(&(pPutMedia->xPendingFragmentAcks)))
         {
@@ -669,6 +731,8 @@ static FragmentAck_t *prvReadFragmentAck(PutMedia_t *pPutMedia)
         }
         //Unlock(pPutMedia->xLock);
         k_mutex_unlock(pPutMedia->xLockMutex);
+    } else {
+        LogError("Failed to lock mutex with error: %d", ret);
     }
 
     return pFragmentAck;
@@ -699,6 +763,8 @@ int Kvs_describeStream(KvsServiceParameter_t *pServPara, KvsDescribeStreamParame
     size_t uRspBodyLen = 0;
 
     NetIoHandle xNetIoHandle = NULL;
+
+    LOG_DBG("token before describeStream: %s %d", pServPara->pcAccessKey, strlen(pServPara->pcAccessKey));
 
     if (puHttpStatusCode != NULL)
     {
@@ -782,7 +848,13 @@ int Kvs_describeStream(KvsServiceParameter_t *pServPara, KvsDescribeStreamParame
 
         if (uHttpStatusCode != 200)
         {
-            LogInfo("Describe Stream failed, HTTP status code: %u", uHttpStatusCode);
+            res = KVS_ERRNO_FAIL; // TODO - need to define error code
+            // LogInfo("Describe Stream failed, HTTP status code: %u", uHttpStatusCode);
+            LOG_WRN("Describe Stream failed, HTTP status code: %u", uHttpStatusCode);
+            LogInfo("HTTP response message:%.*s", (int)uRspBodyLen, pRspBody);
+        } else {
+            // LogInfo("Describe Stream success, HTTP status code: %u", uHttpStatusCode);
+            LOG_INF("Describe Stream success, HTTP status code: %u", uHttpStatusCode);
             LogInfo("HTTP response message:%.*s", (int)uRspBodyLen, pRspBody);
         }
     }
@@ -892,6 +964,9 @@ int Kvs_createStream(KvsServiceParameter_t *pServPara, KvsCreateStreamParameter_
         {
             LogInfo("Create Stream failed, HTTP status code: %u", uHttpStatusCode);
             LogInfo("HTTP response message:%.*s", (int)uRspBodyLen, pRspBody);
+        } else {
+          LOG_DBG("Create Stream success, HTTP status code: %u", uHttpStatusCode);
+          LOG_DBG("HTTP response message:%.*s", (int)uRspBodyLen, pRspBody);
         }
     }
 
@@ -922,6 +997,8 @@ int Kvs_getDataEndpoint(KvsServiceParameter_t *pServPara, KvsGetDataEndpointPara
     size_t uRspBodyLen = 0;
 
     NetIoHandle xNetIoHandle = NULL;
+
+    LOG_DBG("token before getDataEndpoint: %s %d, %s %d", pServPara->pcAccessKey, strlen(pServPara->pcAccessKey), pServPara->pcToken, strlen(pServPara->pcToken));
 
     if (puHttpStatusCode != NULL)
     {
@@ -972,8 +1049,8 @@ int Kvs_getDataEndpoint(KvsServiceParameter_t *pServPara, KvsGetDataEndpointPara
         LogError("Failed to create NetIo handle");
     }
     else if (
-        (res = NetIo_setRecvTimeout(xNetIoHandle, pServPara->uRecvTimeoutMs)) != KVS_ERRNO_NONE ||
-        (res = NetIo_setSendTimeout(xNetIoHandle, pServPara->uSendTimeoutMs)) != KVS_ERRNO_NONE ||
+        // (res = NetIo_setRecvTimeout(xNetIoHandle, pServPara->uRecvTimeoutMs)) != KVS_ERRNO_NONE ||
+        // (res = NetIo_setSendTimeout(xNetIoHandle, pServPara->uSendTimeoutMs)) != KVS_ERRNO_NONE ||
         (res = NetIo_connect(xNetIoHandle, pServPara->pcHost, PORT_HTTPS)) != KVS_ERRNO_NONE)
     {
         LogError("Failed to connect to %s", pServPara->pcHost);
@@ -1418,4 +1495,214 @@ int Kvs_putMediaReadFragmentAck(PutMediaHandle xPutMediaHandle, ePutMediaFragmen
     }
 
     return res;
+}
+
+/** Testing situation from https://docs.aws.amazon.com/AmazonS3/latest/API/sig-v4-header-based-auth.html
+ * 
+ *  Canonical Request:      ---------------------------------------------------------------|----------------------------
+ *  GET                                                                                     VERB
+ *  /test.txt                                                                               URI
+ * 
+ *  host:examplebucket.s3.amazonaws.com                                                     host
+ *  range:bytes=0-9                                                                         range
+ *  x-amz-content-sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855   empty body sha256
+ *  x-amz-date:20130524T000000Z                                                             x-amz-date
+ *
+ *  host;range;x-amz-content-sha256;x-amz-date                                              signed headers
+ *  e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855                        hashed payload
+ * ----------------------------------------------------------------------------------------|----------------------------
+ *  Canonical Request Hash given:       7344ae5b7ee6c3e7e6b0fe0640412a37625d1fbfff95c48bbb2dc43964946972
+ *  Canonical Request Hash ours:        7344ae5b7ee6c3e7e6b0fe0640412a37625d1fbfff95c48bbb2dc43964946972
+ * 
+ *  String To Sign:         ---------------------------------------------------------------|----------------------------
+ *  AWS4-HMAC-SHA256                                                                        Algorithm
+ *  20130524T000000Z                                                                        Request date
+ *  20130524/us-east-1/s3/aws4_request                                                      Scope
+ *  7344ae5b7ee6c3e7e6b0fe0640412a37625d1fbfff95c48bbb2dc43964946972                        Hashed Canonical Request
+ * ----------------------------------------------------------------------------------------|----------------------------
+ * 
+ *  Signing Key:            ---------------------------------------------------------------|----------------------------
+ *  DateKey               = HMAC-SHA256("AWS4" + "<SecretAccessKey>", "20130524")         = 4fe8c47cd276b4c7e04c1e8a7f5923062e61ba0399dc89c93998486a3dc0bc9f    1859675a70a0a0eedaf980cedb4ca37b8d1fe596b0ea3c21fe8729d5148d03fc    68896419206d6240ad4cd7dc8ba658efbf3b43b53041950083a10833824fcfbb
+ *  DateRegionKey         = HMAC-SHA256(<DateKey>, "us-east-1")                           = 36568e2661f2b80f63df5e8a366b318f3df8959d968c4c27ccf1ead86c66b929    10c2b5b2a694f813134bf67e29cf4860a19c9ba855f0f9d66d5041897d258674    b1d69b01d01fbfab62ce62e2b354dc81fa797232685c3de02919930c87f3db5d
+ *  DateRegionServiceKey  = HMAC-SHA256(<DateRegionKey>, "s3")                            = ad7e51781a15ef9302d0ad6e012b8c75de2c7f3a67f23c51e99026570219db71    0752acc01880b845bc697bb359de3f186f21c78498a0f6f2cd392d382a9f5f06    ec603b02e46102b2c2563dd47216472c5c0aba27edeb8308255e4c60bb07bda0
+ *  SigningKey            = HMAC-SHA256(<DateRegionServiceKey>, "aws4_request")           = f0964526f1f568b2b0d4b9f98eafe032297dcff14dfecadf740a143ff3a7dcc4    d949da6fe2897897d73557446db35c06dc34feb7f74e7d949c6fe9d674a02103
+ * ----------------------------------------------------------------------------------------|----------------------------
+ *                                                                                          ff560d1d0fb1bfe972844b2029d69193db4ff13add26e9c5fbd2dae52ffd65ac    7553b766519d7713ec5cea28f8d295a6f5b5a98df23365363ef8183296c74071
+ *  Signature:              ---------------------------------------------------------------|----------------------------
+ *  Signature             = HexEncode(HMAC-SHA256(<SigningKey>, <StringToSign>))          = f0e8bdb87c964420e857bd35b5d6ed310bd44f0170aba48dd91039c6036bdb41
+ *  Signature             = HexEncode(HMAC-SHA256(<SigningKey>, <StringToSign>))          = <Signature>
+ */
+
+#include "kvs/test_sigv4.h"
+#define EMPTY_BODY_SHA265 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+#define TEST_AWS_ACCESS_KEY "AKIAIOSFODNN7EXAMPLE"
+#define TEST_AWS_SECRET_KEY "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+
+void test_check_signature()
+{
+    char pcRegion[] = "us-east-1";
+    char pcService[] = "s3";
+    char pcStreamName[] = "exampleStreamName";  
+    char pcHost[] = "examplebucket.s3.amazonaws.com";
+    char *pcToken = NULL;
+    char pcHttpMethod[] = "GET";
+    char pcUri[] = "/test.txt";
+    char pcBody[] = "";
+    
+    char pcXAmzDate[DATE_TIME_ISO_8601_FORMAT_STRING_SIZE] = "20130524T000000Z";
+
+    AwsSigV4Handle xAwsSigV4Handle = NULL;
+
+    HTTP_HEADERS_HANDLE xHttpReqHeaders = NULL;
+    
+    STRING_HANDLE xStHttpBody = NULL;
+    STRING_HANDLE xStContentLength = NULL;
+
+    KvsServiceParameter_t xServPara = {
+        .pcHost = pcHost,
+        .pcRegion = pcRegion,
+        .pcService = pcService,
+        .pcAccessKey = TEST_AWS_ACCESS_KEY,
+        .pcSecretKey = TEST_AWS_SECRET_KEY,
+        .pcToken = pcToken,
+        .uRecvTimeoutMs = 1000,
+        .uSendTimeoutMs = 1000
+    };
+
+    int res = KVS_ERRNO_NONE;
+
+    if (
+        (xStHttpBody = STRING_construct_sprintf(DESCRIBE_STREAM_HTTP_BODY_TEMPLATE, pcStreamName)) == NULL ||
+        (xStContentLength = STRING_construct_sprintf("%u", STRING_length(xStHttpBody))) == NULL)
+    {
+        res = KVS_ERROR_UNABLE_TO_ALLOCATE_HTTP_BODY;
+        LogError("Failed to allocate HTTP body");
+    }
+    else if (
+        (xHttpReqHeaders = HTTPHeaders_Alloc()) == NULL || 
+        HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_HOST, pcHost) != HTTP_HEADERS_OK ||
+        //HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_ACCEPT, VAL_ACCEPT_ANY) != HTTP_HEADERS_OK ||
+        //HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_CONTENT_LENGTH, STRING_c_str(xStContentLength)) != HTTP_HEADERS_OK ||
+        //HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_CONTENT_TYPE, VAL_CONTENT_TYPE_APPLICATION_jSON) != HTTP_HEADERS_OK ||
+        //HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_USER_AGENT, VAL_USER_AGENT) != HTTP_HEADERS_OK ||
+        HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, "range", "bytes=0-9") != HTTP_HEADERS_OK ||
+        HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, "x-amz-content-sha256", EMPTY_BODY_SHA265) != HTTP_HEADERS_OK ||
+        HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_X_AMZ_DATE, pcXAmzDate) != HTTP_HEADERS_OK ||
+        (pcToken != NULL && (HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_X_AMZ_SECURITY_TOKEN, pcToken) != HTTP_HEADERS_OK)))
+    {
+        res = KVS_ERROR_UNABLE_TO_GENERATE_HTTP_HEADER;
+        LogError("Failed to generate HTTP headers");
+    }
+    else if (
+        (xAwsSigV4Handle = prvSign(&xServPara, pcUri, URI_QUERY_EMPTY, xHttpReqHeaders, STRING_c_str(xStHttpBody))) == NULL ||
+        HTTPHeaders_AddHeaderNameValuePair(xHttpReqHeaders, HDR_AUTHORIZATION, AwsSigV4_GetAuthorization(xAwsSigV4Handle)) != HTTP_HEADERS_OK)
+    {
+        res = KVS_ERROR_FAIL_TO_SIGN_HTTP_REQ;
+        LogError("Failed to sign");
+    }
+
+    size_t uHeadersCnt = 0;
+    size_t i = 0;
+    char *pcHeader = NULL;
+    size_t reqSize = 0;
+    char *xStHttpReq = NULL;
+
+    LOG_DBG("Generating HTTP request");
+
+    if (HTTPHeaders_GetHeaderCount(xHttpReqHeaders, &uHeadersCnt) != HTTP_HEADERS_OK)
+    {
+        res = KVS_ERROR_UNABLE_TO_GET_HTTP_HEADER_COUNT;
+    }
+    else
+    {
+        // Calculate initial size for the HTTP request string (method + URI + HTTP version + CRLF + CRLF)
+        //reqSize = strlen(pcHttpMethod) + strlen(pcUri) + strlen(" HTTP/1.1\r\n\r\n") + 1;
+        reqSize = strlen(pcHttpMethod) + strlen(pcUri) + strlen(" HTTP/1.1\r\n") + 2;
+        xStHttpReq = (char *)k_malloc(reqSize);
+        
+        if (xStHttpReq == NULL)
+        {
+            res = KVS_ERROR_C_UTIL_STRING_ERROR;
+        }
+        else
+        {
+            // Format the initial HTTP request line
+            snprintf(xStHttpReq, reqSize, "%s %s HTTP/1.1\r\n", pcHttpMethod, pcUri);
+            LOG_DBG("Initial HTTP request line: %s", xStHttpReq);
+
+            for (i = 0; i < uHeadersCnt && res == KVS_ERRNO_NONE; i++)
+            {
+                if (HTTPHeaders_GetHeader(xHttpReqHeaders, i, &pcHeader) != HTTP_HEADERS_OK)
+                {
+                    res = KVS_ERROR_UNABLE_TO_GET_HTTP_HEADER;
+                }
+                else
+                {
+                    size_t headerLen = strlen(pcHeader) + strlen("\r\n") + 1;
+                    reqSize += headerLen;
+
+                    // Reallocate memory for the growing request string
+                    char *newReq = (char *)k_realloc(xStHttpReq, reqSize);
+                    if (newReq == NULL)
+                    {
+                        res = KVS_ERROR_C_UTIL_STRING_ERROR;
+                        free(pcHeader);
+                        break;
+                    }
+
+                    xStHttpReq = newReq;
+                    strcat(xStHttpReq, pcHeader);
+                    strcat(xStHttpReq, "\r\n");
+
+                    /* pcHeader was created by HTTPHeaders_GetHeader via malloc */
+                    free(pcHeader);
+                }
+            }
+
+            if (res == KVS_ERRNO_NONE)
+            {
+                reqSize += strlen("\r\n") + 2;
+                char *newReq = (char *)k_realloc(xStHttpReq, reqSize);
+                if (newReq == NULL)
+                {
+                    res = KVS_ERROR_C_UTIL_STRING_ERROR;
+                }
+                else
+                {
+                    xStHttpReq = newReq;
+                    strcat(xStHttpReq, "\r\n");
+
+                    if (strlen(pcBody) > 0)
+                    {
+                        reqSize += strlen(pcBody) + 1;
+                        newReq = (char *)k_realloc(xStHttpReq, reqSize);
+                        if (newReq == NULL)
+                        {
+                            res = KVS_ERROR_C_UTIL_STRING_ERROR;
+                        }
+                        else
+                        {
+                            xStHttpReq = newReq;
+                            strcat(xStHttpReq, pcBody);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (res == KVS_ERRNO_NONE)
+    {
+      // Print out the generated HTTP request
+      LOG_DBG("Generated HTTP request");
+      LOG_DBG("\r\n%s", xStHttpReq);
+      //LOG_HEXDUMP_DBG(xStHttpReq, strlen(xStHttpReq), "HTTP Request");
+      LOG_INF("String Handle: %s", xStHttpReq);
+    }
+    else
+    {
+      LOG_ERR("Failed to generate HTTP request");
+        k_free(xStHttpReq);
+        xStHttpReq = NULL;
+    }
 }

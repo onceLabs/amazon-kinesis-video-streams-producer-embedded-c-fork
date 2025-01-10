@@ -213,14 +213,38 @@ static SocketStatus_t attemptConnection( struct zsock_addrinfo * pListHead,
     /* Attempt to connect to one of the retrieved DNS records. */
     for( pIndex = pListHead; pIndex != NULL; pIndex = pIndex->ai_next )
     {
+        LOG_DBG( "Creating a TCP socket." );
         *pTcpSocket = zsock_socket( pIndex->ai_family,
                                     pIndex->ai_socktype,
                                     pIndex->ai_protocol );
+
+        LOG_DBG( "Created a TCP socket: Socket=%d.", *pTcpSocket );
 
         if( *pTcpSocket == -1 )
         {
             continue;
         }
+
+        // Log out the resolved IP address
+        char resolvedIpAddr[ INET6_ADDRSTRLEN ];
+        if( pIndex->ai_family == AF_INET )
+        {
+            struct sockaddr_in * pIpv4Address = ( struct sockaddr_in * ) pIndex->ai_addr;
+            ( void ) zsock_inet_ntop( ( int32_t ) pIndex->ai_family,
+                                      &pIpv4Address->sin_addr,
+                                      resolvedIpAddr,
+                                      sizeof( resolvedIpAddr ) );
+        }
+        else
+        {
+            struct sockaddr_in6 * pIpv6Address = ( struct sockaddr_in6 * ) pIndex->ai_addr;
+            ( void ) zsock_inet_ntop( ( int32_t ) pIndex->ai_family,
+                                      &pIpv6Address->sin6_addr,
+                                      resolvedIpAddr,
+                                      sizeof( resolvedIpAddr ) );
+        }
+        LOG_DBG( "Attempting to connect to server using the resolved IP address: IP address=%s.",
+                    resolvedIpAddr );
 
         /* Attempt to connect to a resolved DNS address of the host. */
         returnStatus = connectToAddress( pIndex->ai_addr, port, *pTcpSocket );
@@ -284,6 +308,9 @@ SocketStatus_t Sockets_Connect( int32_t * pTcpSocket,
 
     if( returnStatus == SOCKETS_SUCCESS )
     {
+        LOG_DBG("Attempting to resolve the host name: Host=%.*s.",
+                    ( int32_t ) pServerInfo->hostNameLength,
+                    pServerInfo->pHostName );
         returnStatus = resolveHostName( pServerInfo->pHostName,
                                         pServerInfo->hostNameLength,
                                         &pListHead );
@@ -291,6 +318,35 @@ SocketStatus_t Sockets_Connect( int32_t * pTcpSocket,
 
     if( returnStatus == SOCKETS_SUCCESS )
     {
+        LOG_DBG("Resolved the host name: Host=%.*s.",
+                    ( int32_t ) pServerInfo->hostNameLength,
+                    pServerInfo->pHostName );
+
+        // Log out resolved IP addresses
+        struct zsock_addrinfo * pIndex = NULL;
+        char resolvedIpAddr[ INET6_ADDRSTRLEN ];
+        for( pIndex = pListHead; pIndex != NULL; pIndex = pIndex->ai_next )
+        {
+            if( pIndex->ai_family == AF_INET )
+            {
+                struct sockaddr_in * pIpv4Address = ( struct sockaddr_in * ) pIndex->ai_addr;
+                ( void ) zsock_inet_ntop( ( int32_t ) pIndex->ai_family,
+                                          &pIpv4Address->sin_addr,
+                                          resolvedIpAddr,
+                                          sizeof( resolvedIpAddr ) );
+            }
+            else
+            {
+                struct sockaddr_in6 * pIpv6Address = ( struct sockaddr_in6 * ) pIndex->ai_addr;
+                ( void ) zsock_inet_ntop( ( int32_t ) pIndex->ai_family,
+                                          &pIpv6Address->sin6_addr,
+                                          resolvedIpAddr,
+                                          sizeof( resolvedIpAddr ) );
+            }
+
+            LOG_DBG("Resolved IP address: %s", resolvedIpAddr);
+        }
+        //
         returnStatus = attemptConnection( pListHead,
                                           pServerInfo->pHostName,
                                           pServerInfo->hostNameLength,

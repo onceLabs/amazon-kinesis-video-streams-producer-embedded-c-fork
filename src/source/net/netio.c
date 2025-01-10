@@ -18,7 +18,7 @@
 #include <string.h>
 
 #include <sys/time.h>
-#include <socket.h>
+// #include <socket.h>
 #include <zephyr/net/socket.h>
 /* Third party headers */
 #include "azure_c_shared_utility/xlogging.h"
@@ -27,7 +27,7 @@
 #include <mbedtls/psa_util.h>
 // #include <mbedtls/net.h>
 #include <mbedtls/net_sockets.h>
-#include <zephyr/posix/sys/select.h>
+//#include <zephyr/posix/sys/select.h>
 #include <zephyr/net/net_context.h>
 #include <zephyr/net/net_ip.h>
 #include <zephyr/net/net_pkt.h>
@@ -128,7 +128,7 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
     }
     else
     {
-        mbedtls_ssl_set_bio(&(pxNet->xSsl), ( void * )_pxNet->tcpSocket, zephyr_net_send, zephyr_net_rcv, NULL);
+        mbedtls_ssl_set_bio(&(pxNet->xSsl), ( void * )pxNet->tcpSocket, zephyr_net_send, zephyr_net_rcv, NULL);
 
         if ((retVal = mbedtls_ssl_config_defaults(&(pxNet->xConf), MBEDTLS_SSL_IS_CLIENT, MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT)) != 0)
         {
@@ -141,6 +141,7 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
             mbedtls_ssl_set_hostname(&(pxNet->xSsl), pcHost);
             mbedtls_ssl_conf_read_timeout(&(pxNet->xConf), pxNet->uRecvTimeoutMs);
             NetIo_setSendTimeout(pxNet, pxNet->uSendTimeoutMs);
+
 
             if (pcRootCA != NULL && pcCert != NULL && pcPrivKey != NULL)
             {
@@ -281,7 +282,9 @@ NetIoHandle NetIo_create(void)
         mbedtls_ssl_config_init(&(_pxNet->xConf));
         mbedtls_ctr_drbg_init(&(_pxNet->xCtrDrbg));
         mbedtls_entropy_init(&(_pxNet->xEntropy));
+#if defined(CONFIG_MBEDTLS_DEBUG_FUNC)
         mbedtls_ssl_conf_dbg(&(_pxNet->xConf), zephyr_mbedtls_debug, NULL);
+#endif
         _pxNet->uRecvTimeoutMs = DEFAULT_CONNECTION_TIMEOUT_MS;
         _pxNet->uSendTimeoutMs = DEFAULT_CONNECTION_TIMEOUT_MS;
 
@@ -348,6 +351,15 @@ void NetIo_disconnect(NetIoHandle xNetIoHandle)
     {
         mbedtls_ssl_close_notify(&(pxNet->xSsl));
     }
+
+    LOG_DBG("Disconnecting socket %d", pxNet->tcpSocket);
+
+    SocketStatus_t returnStatus = Sockets_Disconnect(pxNet->tcpSocket);
+
+    if (returnStatus != SOCKETS_SUCCESS)
+    {
+        LOG_ERR("Failed to disconnect socket %d (err:-%d)", pxNet->tcpSocket, returnStatus);
+    }
 }
 
 int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uBytesToSend)
@@ -378,7 +390,7 @@ int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uB
       {
         LOG_DBG("Sending data: bytesRemaining= %d", uBytesRemaining);
         // Log data that is being sent
-        LOG_HEXDUMP_DBG(pIndex, uBytesRemaining, "Data being sent");
+        // LOG_HEXDUMP_DBG(pIndex, uBytesRemaining, "Data being sent");
         tlsStatus = (uint32_t) mbedtls_ssl_write(&(pxNet->xSsl), (const unsigned char *)pIndex, uBytesRemaining);
         if( 
           ( tlsStatus == MBEDTLS_ERR_SSL_TIMEOUT ) ||
@@ -403,6 +415,7 @@ int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uB
       } 
       else {
         LOG_ERR("Socket not ready to send data");
+        k_sleep(K_MSEC(3));
       }
     } while (uBytesRemaining > 0);
 
@@ -473,37 +486,24 @@ bool NetIo_isDataAvailable(NetIoHandle xNetIoHandle)
 {
     NetIo_t *pxNet = (NetIo_t *)xNetIoHandle;
     bool bDataAvailable = false;
-    struct timeval tv = {0};
-    fd_set read_fds = {0};
-    int fd = 0;
+    
+    if (pxNet == NULL) {
+        LOG_ERR("Invalid argument - NetIoHandle is NULL");
+        return bDataAvailable;
+    }
 
-    if (pxNet != NULL)
-    {
-        // if (k_fifo_is_empty(&(pxNet->xFd->recv_q)))
-        // {
-        //     bDataAvailable = false;
-        // }
-        // else
-        // {
-        //     bDataAvailable = true;
-        // }
-        // fd = pxNet->xFd.fd;
-        // if (fd >= 0)
-        // {
-        //     FD_ZERO(&read_fds);
-        //     FD_SET(fd, &read_fds);
+    struct zsock_pollfd pollFds = {
+        .events = ZSOCK_POLLIN,
+        .revents = 0,
+        .fd = pxNet->tcpSocket
+    };
 
-        //     tv.tv_sec = 0;
-        //     tv.tv_usec = 0;
-
-        //     if (select(fd + 1, &read_fds, NULL, NULL, &tv) >= 0)
-        //     {
-        //         if (FD_ISSET(fd, &read_fds))
-        //         {
-        //             bDataAvailable = true;
-        //         }
-        //     }
-        // }
+    int pollStatus = zsock_poll( &pollFds, 1, 0 );
+    if ( pollStatus > 0 ) {
+        bDataAvailable = true;
+    }
+    else if (pollStatus < 0) {
+        LOG_ERR("Failed to poll socket: %d", pollStatus);
     }
 
     return bDataAvailable;

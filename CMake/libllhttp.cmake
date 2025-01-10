@@ -9,12 +9,24 @@ set(LLHTTP_SRC
 
 set(LLHTTP_INC
     ${LLHTTP_DIR}/include
+    ${ZEPHYR_DIR}/include
 )
 
 # setup static library
 add_library(llhttp STATIC ${LLHTTP_SRC})
 target_compile_options(llhttp PUBLIC -mcpu=cortex-m33)
 target_include_directories(llhttp PUBLIC ${LLHTTP_INC})
+
+target_link_libraries(llhttp PRIVATE
+  zephyr_interface
+  zephyr_kernel
+  zephyr_libc
+  zephyr_minimal
+  zephyr_posix
+  zephyr_syscall
+  zephyr_types
+)
+
 
 include(GNUInstallDirs)
 

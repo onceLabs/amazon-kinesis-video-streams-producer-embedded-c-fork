@@ -14,6 +14,8 @@
 #include "azure_c_shared_utility/optimize_size.h"
 #include "azure_c_shared_utility/crt_abstractions.h"
 
+#include <zephyr/kernel.h>
+
 // VS 2008 does not have INFINITY and all the nice goodies...
 #if defined (TIZENRT)
 #define DEFINE_INFINITY 1
@@ -706,7 +708,7 @@ int mallocAndStrcpy_s(char** destination, const char* source)
     else
     {
         size_t l = strlen(source);
-        char* temp = (char*)malloc(l + 1);
+        char* temp = (char*)k_malloc(l + 1);
 
         /*Codes_SRS_CRT_ABSTRACTIONS_99_037: [Upon failure to allocate memory for the destination, the function will return ENOMEM.]*/
         if (temp == NULL)
@@ -720,7 +722,7 @@ int mallocAndStrcpy_s(char** destination, const char* source)
             copied_result = strcpy_s(*destination, l + 1, source);
             if (copied_result < 0) /*strcpy_s error*/
             {
-                free(*destination);
+                k_free(*destination);
                 *destination = NULL;
                 result = copied_result;
             }
