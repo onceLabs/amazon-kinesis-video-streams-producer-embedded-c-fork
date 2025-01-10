@@ -415,6 +415,7 @@ int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uB
       } 
       else {
         LOG_ERR("Socket not ready to send data");
+        k_sleep(K_MSEC(3));
       }
     } while (uBytesRemaining > 0);
 
