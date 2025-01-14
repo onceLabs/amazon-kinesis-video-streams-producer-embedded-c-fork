@@ -837,12 +837,13 @@ static int prvPutMediaDoWorkDefault(KvsApp_t *pKvs)
             /* Propagate the res error */
             break;
         }
-        LOG_DBG("xSendCnt: %d", xSendCnt);
+        // LOG_DBG("xSendCnt: %d", xSendCnt);
     } while (false);
 
     if (xSendCnt == 0)
     {
-        sleepInMs(50);
+        // sleepInMs(50);
+        k_sleep(K_MSEC(50));
     }
 
     return res;
