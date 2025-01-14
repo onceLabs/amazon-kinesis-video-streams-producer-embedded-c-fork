@@ -36,7 +36,7 @@
 #include "os/allocator.h"
 #include "restful/aws_signer_v4.h"
 
-LOG_MODULE_REGISTER(aws_signer_v4, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(aws_signer_v4, LOG_LEVEL_NONE);
 
 #define HTTP_METHOD_GET "GET"
 #define HTTP_METHOD_PUT "PUT"

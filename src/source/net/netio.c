@@ -41,7 +41,7 @@
 #include <kvs/transport/sockets_zephyr.h>
 #include <zephyr_mbedtls_priv.h>
 
-LOG_MODULE_REGISTER(netio, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(netio, LOG_LEVEL_INF);
 
 #define DEFAULT_CONNECTION_TIMEOUT_MS       (10 * 1000)
 
@@ -384,7 +384,7 @@ int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uB
      * when TCP socket is not ready to accept more data for
      * network transmission (possibly due to a full TX buffer). */
     do {
-      pollStatus = zsock_poll( &pollFds, 1, 0 );
+      pollStatus = zsock_poll( &pollFds, 1, 5 );
 
       if( pollStatus > 0 )
       {

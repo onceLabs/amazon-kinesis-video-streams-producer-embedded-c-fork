@@ -1393,7 +1393,7 @@ int Kvs_putMediaDoWork(PutMediaHandle xPutMediaHandle)
                         }
                         uBytesReceived += uFragAckLen;
                     }
-                    // prvLogPendingFragmentAcks(pPutMedia);
+                    prvLogPendingFragmentAcks(pPutMedia);
                 }
             }
         }
