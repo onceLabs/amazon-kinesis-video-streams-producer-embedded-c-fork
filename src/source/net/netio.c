@@ -414,8 +414,8 @@ int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uB
         LOG_ERR("Failed to poll socket: %d", pollStatus);
       } 
       else {
-        LOG_ERR("Socket not ready to send data");
-        k_sleep(K_MSEC(3));
+        LOG_WRN("Socket not ready to send data");
+        k_sleep(K_MSEC(16));
       }
     } while (uBytesRemaining > 0);
 
