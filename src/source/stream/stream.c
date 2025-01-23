@@ -152,7 +152,7 @@ StreamHandle Kvs_streamCreate(VideoTrackInfo_t *pVideoTrackInfo, AudioTrackInfo_
         }
         else
         {
-            LOG_HEXDUMP_DBG(xMkvHeader.pHeader, xMkvHeader.uHeaderLen, "MKV Header");
+            // LOG_HEXDUMP_DBG(xMkvHeader.pHeader, xMkvHeader.uHeaderLen, "MKV Header");
             pxStream->pMkvEbmlSeg = (char *)(xMkvHeader.pHeader);
             pxStream->uMkvEbmlSegLen = (size_t)(xMkvHeader.uHeaderLen);
             // memcpy(&pxStream->uMkvEbmlSegLen, &xMkvHeader.uHeaderLen, sizeof(size_t));

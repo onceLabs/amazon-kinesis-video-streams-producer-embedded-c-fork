@@ -1383,7 +1383,7 @@ int KvsApp_addFrameWithCallbacks(KvsAppHandle handle, uint8_t *pData, size_t uDa
 
     if (pKvs == NULL || pData == NULL || uDataLen == 0)
     {
-        LOG_ERR("pKvs is NULL or pData is NULL or uDataLen is 0");
+        LOG_ERR("pKvs is NULL or pData is NULL or uDataLen is 0, pKvs: %p, pData: %p, uDataLen: %d", pKvs, pData, uDataLen);
         res = KVS_ERROR_INVALID_ARGUMENT;
     }
     else if (uTimestamp < pKvs->uEarliestTimestamp)
