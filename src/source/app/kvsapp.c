@@ -672,11 +672,14 @@ static int checkAndBuildStream(KvsApp_t *pKvs, uint8_t *pData, size_t uDataLen, 
                 if ((res = prvBufMallocAndCopy(&(pKvs->pSps), &(pKvs->uSpsLen), pSps, uSpsLen)) != KVS_ERRNO_NONE)
                 {
                     /* Propagate the res error */
+                    LOG_ERR("Failed to copy SPS");
                 }
                 else
                 {
                     LogInfo("SPS is set");
                 }
+            } else {
+                LOG_ERR("Failed to get SPS");
             }
             if (pKvs->pPps == NULL && NALU_getNaluFromAvccNalus(pData, uDataLen, NALU_TYPE_PPS, &pPps, &uPpsLen) == KVS_ERRNO_NONE)
             {
@@ -684,11 +687,14 @@ static int checkAndBuildStream(KvsApp_t *pKvs, uint8_t *pData, size_t uDataLen, 
                 if ((res = prvBufMallocAndCopy(&(pKvs->pPps), &(pKvs->uPpsLen), pPps, uPpsLen)) != KVS_ERRNO_NONE)
                 {
                     /* Propagate the res error */
+                    LOG_ERR("Failed to copy PPS");
                 }
                 else
                 {
                     LogInfo("PPS is set");
                 }
+            } else {
+                LOG_ERR("Failed to get PPS");
             }
         }
 
@@ -1419,6 +1425,7 @@ int KvsApp_addFrameWithCallbacks(KvsAppHandle handle, uint8_t *pData, size_t uDa
         xDataFrameIn.uTimestampMs = uTimestamp;
         xDataFrameIn.xTrackType = xTrackType;
         xDataFrameIn.xClusterType = (xDataFrameIn.bIsKeyFrame) ? MKV_CLUSTER : MKV_SIMPLE_BLOCK;
+        LOG_INF("Adding frame with cluster type: %u", xDataFrameIn.xClusterType);
 
         memset(pUserData, 0, sizeof(DataFrameUserData_t));
         if (pCallbacks == NULL)
