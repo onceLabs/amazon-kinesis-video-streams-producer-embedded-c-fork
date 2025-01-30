@@ -27,6 +27,11 @@
 #include "codec/sps_decode.h"
 #include "os/endian.h"
 
+#include <zephyr/kernel.h>
+#include <zephyr/logging/log.h>
+
+LOG_MODULE_REGISTER(nalu, LOG_LEVEL_NONE);
+
 #define MAX_NALU_COUNT_IN_A_FRAME ( 16 )
 
 typedef struct Nal
@@ -232,6 +237,7 @@ bool NALU_isAnnexBFrame(uint8_t *pAnnexbBuf, uint32_t uAnnexbBufLen)
         }
     }
 
+    LOG_DBG("NALU is %s", bRes ? "Annex-B" : "not Annex-B");
     return bRes;
 }
 
@@ -247,7 +253,12 @@ int NALU_convertAnnexBToAvccInPlace(uint8_t *pAnnexbBuf, uint32_t uAnnexbBufLen,
     if (pAnnexbBuf == NULL || uAnnexbBufLen <= 4 || uAnnexbBufSize < uAnnexbBufLen || pAvccLen == NULL)
     {
         res = KVS_ERROR_INVALID_ARGUMENT;
-        LogError("Invalid argument");
+        LogError("Invalid argument - %s", pAnnexbBuf == NULL ? "pAnnexbBuf is null" : uAnnexbBufLen <= 4 ? "uAnnexbBufLen is too small" :
+                    uAnnexbBufSize < uAnnexbBufLen ? "buff size insufficient" : "pAvccLen is null");
+        if (uAnnexbBufSize < uAnnexbBufLen)
+        {
+            LogError("%d < %d", uAnnexbBufSize, uAnnexbBufLen);
+        }
     }
     else if (!NALU_isAnnexBFrame(pAnnexbBuf, uAnnexbBufLen))
     {

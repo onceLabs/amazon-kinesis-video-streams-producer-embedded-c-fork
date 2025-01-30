@@ -152,11 +152,13 @@ StreamHandle Kvs_streamCreate(VideoTrackInfo_t *pVideoTrackInfo, AudioTrackInfo_
         }
         else
         {
+            // LOG_HEXDUMP_DBG(xMkvHeader.pHeader, xMkvHeader.uHeaderLen, "MKV Header");
             pxStream->pMkvEbmlSeg = (char *)(xMkvHeader.pHeader);
             pxStream->uMkvEbmlSegLen = (size_t)(xMkvHeader.uHeaderLen);
             // memcpy(&pxStream->uMkvEbmlSegLen, &xMkvHeader.uHeaderLen, sizeof(size_t));
             pxStream->bHasVideoTrack = true;
             pxStream->bHasAudioTrack = (pAudioTrackInfo == NULL) ? false : true;
+            LOG_INF("Stream created");
         }
     }
 
@@ -236,7 +238,7 @@ DataFrameHandle Kvs_streamAddDataFrame(StreamHandle xStreamHandle, DataFrameIn_t
     }
     else
     {
-        LOG_DBG("Initializing DList");
+        // LOG_DBG("Initializing DList");
         memset(pxDataFrame, 0, sizeof(DataFrame_t));
         memcpy(pxDataFrame, pxDataFrameIn, sizeof(DataFrameIn_t));
         DList_InitializeListHead(&(pxDataFrame->xClusterEntry));

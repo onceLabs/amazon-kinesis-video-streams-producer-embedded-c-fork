@@ -273,6 +273,7 @@ static int prvStreamFlushToNextCluster(KvsApp_t *pKvs)
         else
         {
             pDataFrameIn = (DataFrameIn_t *)xDataFrameHandle;
+            LOG_DBG("xClusterType: %d, uTimestampMs: %llu", pDataFrameIn->xClusterType, pDataFrameIn->uTimestampMs);
             if (pDataFrameIn->xClusterType == MKV_CLUSTER)
             {
                 pKvs->uEarliestTimestamp = pDataFrameIn->uTimestampMs;
@@ -623,7 +624,7 @@ static int createStream(KvsApp_t *pKvs)
                 xVideoTrackInfo.pCodecPrivate = pCodecPrivateData;
                 xVideoTrackInfo.uCodecPrivateLen = uCodecPrivateDataLen;
                 pKvs->pVideoTrackInfo = prvCopyVideoTrackInfo(&xVideoTrackInfo);
-                LOG_DBG("Video track info is set");
+                LOG_DBG("Video track info is set (%d, %d)", xVideoTrackInfo.uHeight, xVideoTrackInfo.uWidth);
             }
 
             if (pCodecPrivateData != NULL)
@@ -671,11 +672,14 @@ static int checkAndBuildStream(KvsApp_t *pKvs, uint8_t *pData, size_t uDataLen, 
                 if ((res = prvBufMallocAndCopy(&(pKvs->pSps), &(pKvs->uSpsLen), pSps, uSpsLen)) != KVS_ERRNO_NONE)
                 {
                     /* Propagate the res error */
+                    LOG_ERR("Failed to copy SPS");
                 }
                 else
                 {
                     LogInfo("SPS is set");
                 }
+            } else {
+                LOG_ERR("Failed to get SPS");
             }
             if (pKvs->pPps == NULL && NALU_getNaluFromAvccNalus(pData, uDataLen, NALU_TYPE_PPS, &pPps, &uPpsLen) == KVS_ERRNO_NONE)
             {
@@ -683,11 +687,14 @@ static int checkAndBuildStream(KvsApp_t *pKvs, uint8_t *pData, size_t uDataLen, 
                 if ((res = prvBufMallocAndCopy(&(pKvs->pPps), &(pKvs->uPpsLen), pPps, uPpsLen)) != KVS_ERRNO_NONE)
                 {
                     /* Propagate the res error */
+                    LOG_ERR("Failed to copy PPS");
                 }
                 else
                 {
                     LogInfo("PPS is set");
                 }
+            } else {
+                LOG_ERR("Failed to get PPS");
             }
         }
 
@@ -836,11 +843,13 @@ static int prvPutMediaDoWorkDefault(KvsApp_t *pKvs)
             /* Propagate the res error */
             break;
         }
+        // LOG_DBG("xSendCnt: %d", xSendCnt);
     } while (false);
 
     if (xSendCnt == 0)
     {
-        sleepInMs(50);
+        // sleepInMs(50);
+        k_sleep(K_MSEC(50));
     }
 
     return res;
@@ -1380,7 +1389,7 @@ int KvsApp_addFrameWithCallbacks(KvsAppHandle handle, uint8_t *pData, size_t uDa
 
     if (pKvs == NULL || pData == NULL || uDataLen == 0)
     {
-        LOG_ERR("pKvs is NULL or pData is NULL or uDataLen is 0");
+        LOG_ERR("pKvs is NULL or pData is NULL or uDataLen is 0, pKvs: %p, pData: %p, uDataLen: %d", pKvs, pData, uDataLen);
         res = KVS_ERROR_INVALID_ARGUMENT;
     }
     else if (uTimestamp < pKvs->uEarliestTimestamp)
@@ -1410,13 +1419,13 @@ int KvsApp_addFrameWithCallbacks(KvsAppHandle handle, uint8_t *pData, size_t uDa
     }
     else
     {
-        LOG_DBG("Add frame malloc'd and about to build");
         xDataFrameIn.pData = (char *)pData;
         xDataFrameIn.uDataLen = uDataLen;
         xDataFrameIn.bIsKeyFrame = (xTrackType == TRACK_VIDEO) ? isKeyFrame(pData, uDataLen) : false;
         xDataFrameIn.uTimestampMs = uTimestamp;
         xDataFrameIn.xTrackType = xTrackType;
         xDataFrameIn.xClusterType = (xDataFrameIn.bIsKeyFrame) ? MKV_CLUSTER : MKV_SIMPLE_BLOCK;
+        LOG_INF("Adding frame with cluster type: %u", xDataFrameIn.xClusterType);
 
         memset(pUserData, 0, sizeof(DataFrameUserData_t));
         if (pCallbacks == NULL)
