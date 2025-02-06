@@ -384,13 +384,14 @@ int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uB
      * when TCP socket is not ready to accept more data for
      * network transmission (possibly due to a full TX buffer). */
     do {
-      pollStatus = zsock_poll( &pollFds, 1, 5 );
+      pollStatus = zsock_poll( &pollFds, 1, -1 );
 
       if( pollStatus > 0 )
       {
         LOG_DBG("Sending data: bytesRemaining= %d", uBytesRemaining);
         // Log data that is being sent
         // LOG_HEXDUMP_DBG(pIndex, uBytesRemaining, "Data being sent");
+        LOG_WRN("Sending data: bytesRemaining= %d", uBytesRemaining);
         tlsStatus = (uint32_t) mbedtls_ssl_write(&(pxNet->xSsl), (const unsigned char *)pIndex, uBytesRemaining);
         if( 
           ( tlsStatus == MBEDTLS_ERR_SSL_TIMEOUT ) ||
@@ -498,7 +499,7 @@ bool NetIo_isDataAvailable(NetIoHandle xNetIoHandle)
         .fd = pxNet->tcpSocket
     };
 
-    int pollStatus = zsock_poll( &pollFds, 1, 0 );
+    int pollStatus = zsock_poll( &pollFds, 1, -1 );
     if ( pollStatus > 0 ) {
         bDataAvailable = true;
     }
