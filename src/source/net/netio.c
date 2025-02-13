@@ -499,7 +499,7 @@ bool NetIo_isDataAvailable(NetIoHandle xNetIoHandle)
         .fd = pxNet->tcpSocket
     };
 
-    int pollStatus = zsock_poll( &pollFds, 1, -1 );
+    int pollStatus = zsock_poll( &pollFds, 1, 0 );
     if ( pollStatus > 0 ) {
         bDataAvailable = true;
     }
