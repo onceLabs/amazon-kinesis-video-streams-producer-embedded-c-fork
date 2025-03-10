@@ -362,6 +362,8 @@ void NetIo_disconnect(NetIoHandle xNetIoHandle)
     }
 }
 
+// Multiple expansions of NetIo_send and //TODO NetIo_recv
+
 int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uBytesToSend)
 {
     int res = 0;
@@ -388,7 +390,6 @@ int NetIo_send(NetIoHandle xNetIoHandle, const unsigned char *pBuffer, size_t uB
 
       if( pollStatus > 0 )
       {
-        LOG_DBG("Sending data: bytesRemaining= %d", uBytesRemaining);
         // Log data that is being sent
         // LOG_HEXDUMP_DBG(pIndex, uBytesRemaining, "Data being sent");
         LOG_WRN("Sending data: bytesRemaining= %d", uBytesRemaining);
