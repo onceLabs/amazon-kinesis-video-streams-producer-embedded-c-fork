@@ -1298,39 +1298,26 @@ int KvsApp_open(KvsAppHandle handle)
     KvsApp_t *pKvs = (KvsApp_t *)handle;
     unsigned int uHttpStatusCode = 0;
 
-    if (pKvs == NULL)
-    {
+    if (pKvs == NULL) {
         res = KVS_ERROR_INVALID_ARGUMENT;
-    }
-    else
-    {
+    } else {
         updateIotCredential(pKvs);
         LOG_DBG("updateIotCredential done");
-        if ((res = updateAndVerifyRestfulReqParameters(pKvs)) != KVS_ERRNO_NONE)
-        {
+        if ((res = updateAndVerifyRestfulReqParameters(pKvs)) != KVS_ERRNO_NONE) {
             LogError("Failed to setup KVS");
             /* Propagate the res error */
-        }
-        else if ((res = setupDataEndpoint(pKvs)) != KVS_ERRNO_NONE)
-        {
+        } else if ((res = setupDataEndpoint(pKvs)) != KVS_ERRNO_NONE) {
             LogError("Failed to setup data endpoint");
             /* Propagate the res error */
-        }
-        else if ((res = Kvs_putMediaStart(&(pKvs->xServicePara), &(pKvs->xPutMediaPara), &uHttpStatusCode, &(pKvs->xPutMediaHandle))) != KVS_ERRNO_NONE)
-        {
+        } else if ((res = Kvs_putMediaStart(&(pKvs->xServicePara), &(pKvs->xPutMediaPara), &uHttpStatusCode, &(pKvs->xPutMediaHandle))) != KVS_ERRNO_NONE) {
             LogError("Failed to setup PUT MEDIA");
             /* Propagate the res error */
-        }
-        else if (uHttpStatusCode != 200)
-        {
+        } else if (uHttpStatusCode != 200) {
             res = KVS_GENERATE_RESTFUL_ERROR(uHttpStatusCode);
             LogError("PUT MEDIA http status code:%d\n", uHttpStatusCode);
-        }
-        else
-        {
+        } else {
             LOG_INF("PUT MEDIA http status code:%d\n", uHttpStatusCode);
-            if ((res = createStream(pKvs)) != KVS_ERRNO_NONE)
-            {
+            if ((res = createStream(pKvs)) != KVS_ERRNO_NONE) {
                 LogError("Failed to setup KVS stream");
                 /* Propagate the res error */
             }
@@ -1425,7 +1412,7 @@ int KvsApp_addFrameWithCallbacks(KvsAppHandle handle, uint8_t *pData, size_t uDa
         xDataFrameIn.uTimestampMs = uTimestamp;
         xDataFrameIn.xTrackType = xTrackType;
         xDataFrameIn.xClusterType = (xDataFrameIn.bIsKeyFrame) ? MKV_CLUSTER : MKV_SIMPLE_BLOCK;
-        LOG_INF("Adding frame with cluster type: %u", xDataFrameIn.xClusterType);
+        // LOG_INF("Adding frame with cluster type: %u", xDataFrameIn.xClusterType);
 
         memset(pUserData, 0, sizeof(DataFrameUserData_t));
         if (pCallbacks == NULL)

@@ -36,7 +36,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_REGISTER(http_helper, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(http_helper, LOG_LEVEL_WRN);
 
 #define DEFAULT_HTTP_RECV_BUFSIZE 2048
 

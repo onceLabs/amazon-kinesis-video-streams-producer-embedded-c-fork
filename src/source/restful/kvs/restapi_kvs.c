@@ -1075,7 +1075,7 @@ int Kvs_getDataEndpoint(KvsServiceParameter_t *pServPara, KvsGetDataEndpointPara
 
         if (uHttpStatusCode != 200)
         {
-            LogInfo("Get Data Endpoint failed, HTTP status code: %u", uHttpStatusCode);
+            LogError("Get Data Endpoint failed, HTTP status code: %u", uHttpStatusCode);
             LogInfo("HTTP response message:%.*s", (int)uRspBodyLen, pRspBody);
         }
         else
@@ -1383,7 +1383,7 @@ int Kvs_putMediaDoWork(PutMediaHandle xPutMediaHandle)
                         }
                         else
                         {
-                            prvLogFragmentAck(&xFragmentAck);
+                            // prvLogFragmentAck(&xFragmentAck);
                             prvPushFragmentAck(pPutMedia, &xFragmentAck);
                             if (xFragmentAck.eventType == eError)
                             {

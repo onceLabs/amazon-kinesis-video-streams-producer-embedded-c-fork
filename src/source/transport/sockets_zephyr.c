@@ -30,7 +30,7 @@
 
 #include "kvs/transport/sockets_zephyr.h"
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER( sockets_zep, LOG_LEVEL_DBG );
+LOG_MODULE_REGISTER( sockets_zep, LOG_LEVEL_WRN );
 /*-----------------------------------------------------------*/
 
 /**

@@ -79,6 +79,7 @@ static int parseIoTCredential(const char *pcJsonSrc, size_t uJsonSrcLen, IotCred
       LogInfo("\r\naccessKeyId: %s %u\n", iot_credential_response.credentials.accessKeyId, strlen(iot_credential_response.credentials.accessKeyId));
       LogInfo("\r\nsecretAccessKey: %s %u\n", iot_credential_response.credentials.secretAccessKey, strlen(iot_credential_response.credentials.secretAccessKey));
       LogInfo("\r\nsessionToken: %s %u\n", iot_credential_response.credentials.sessionToken, strlen(iot_credential_response.credentials.sessionToken));
+      LogInfo("\r\nexpiration: %s %u\n", iot_credential_response.credentials.expiration, strlen(iot_credential_response.credentials.expiration));
 
       // Copy the parsed values to the token
       pToken->pAccessKeyId = k_malloc(strlen(iot_credential_response.credentials.accessKeyId) + 1);
