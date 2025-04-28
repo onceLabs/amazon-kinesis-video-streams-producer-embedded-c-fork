@@ -41,7 +41,7 @@
 #include <kvs/transport/sockets_zephyr.h>
 #include <zephyr_mbedtls_priv.h>
 
-LOG_MODULE_REGISTER(netio, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(netio, LOG_LEVEL_ERR);
 
 #define DEFAULT_CONNECTION_TIMEOUT_MS       (10 * 1000)
 
