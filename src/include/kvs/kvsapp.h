@@ -140,6 +140,11 @@ int KvsApp_open(KvsAppHandle handle);
 int KvsApp_close(KvsAppHandle handle);
 
 /**
+ * Same as KvsApp_open() but with flushing the stream buffer from KvsApp_terminate().
+ */
+int KvsApp_close_and_terminate(KvsAppHandle handle);
+
+/**
  * Add a frame to KVS application. If the stream buffer is not allocated yet, then it'll try to parse decode information
  * and then setup stream buffer.
  *
