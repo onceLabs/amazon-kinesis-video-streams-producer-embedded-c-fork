@@ -31,6 +31,7 @@ typedef struct
     char *pAccessKeyId;
     char *pSecretAccessKey;
     char *pSessionToken;
+    struct tm expiration;
 } IotCredentialToken_t;
 
 /**

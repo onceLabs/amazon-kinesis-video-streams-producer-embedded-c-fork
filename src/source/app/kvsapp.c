@@ -15,6 +15,13 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+#include <sys/timespec.h>
+#include <zephyr/kernel.h>
+#include <errno.h>
+#include <zephyr/posix/posix_types.h>
+#include <zephyr/posix/signal.h>
+#include <zephyr/types.h>
 
 /* Third-party headers */
 #include "azure_c_shared_utility/crt_abstractions.h"
@@ -47,6 +54,8 @@ LOG_MODULE_REGISTER(kvsapp, LOG_LEVEL_DBG);
 #define DEFAULT_PUT_MEDIA_RECV_TIMEOUT_MS (1 * 1000)
 #define DEFAULT_PUT_MEDIA_SEND_TIMEOUT_MS (1 * 1000)
 #define DEFAULT_RING_BUFFER_MEM_LIMIT (1 * 1024 * 1024)
+
+#define TIME_OFFSET_FOR_ERROR_SEC (60 * 5) // 5 minutes
 
 struct k_mutex wrapper_mutex;
 
@@ -414,30 +423,30 @@ static bool isIotCertAvailable(KvsApp_t *pKvs)
 
 static void updateIotCredential(KvsApp_t *pKvs)
 {
-    IotCredentialToken_t *pToken = NULL;
-    IotCredentialRequest_t xIotCredentialReq = {
-        .pCredentialHost = pKvs->pIotCredentialHost,
-        .pRoleAlias = pKvs->pIotRoleAlias,
-        .pThingName = pKvs->pIotThingName,
-        .pRootCA = pKvs->pIotX509RootCa,
-        .pCertificate = pKvs->pIotX509Certificate,
-        .pPrivateKey = pKvs->pIotX509PrivateKey};
+  IotCredentialToken_t *pToken = NULL;
+  IotCredentialRequest_t xIotCredentialReq = {
+    .pCredentialHost = pKvs->pIotCredentialHost,
+    .pRoleAlias = pKvs->pIotRoleAlias,
+    .pThingName = pKvs->pIotThingName,
+    .pRootCA = pKvs->pIotX509RootCa,
+    .pCertificate = pKvs->pIotX509Certificate,
+    .pPrivateKey = pKvs->pIotX509PrivateKey};
 
-    if (isIotCertAvailable(pKvs))
+  if (isIotCertAvailable(pKvs))
+  {
+    LOG_DBG("Updating Iot credential"); 
+    Iot_credentialTerminate(pKvs->pToken);
+    pKvs->pToken = NULL;
+    LOG_DBG("Iot credential terminated");
+    if ((pToken = Iot_getCredential(&xIotCredentialReq)) == NULL)
     {
-        LOG_DBG("Updating Iot credential"); 
-        Iot_credentialTerminate(pKvs->pToken);
-        pKvs->pToken = NULL;
-        LOG_DBG("Iot credential terminated");
-        if ((pToken = Iot_getCredential(&xIotCredentialReq)) == NULL)
-        {
-            LogError("Failed to get Iot credential");
-        }
-        else
-        {
-            pKvs->pToken = pToken;
-        }
+      LogError("Failed to get Iot credential");
     }
+    else
+    {
+      pKvs->pToken = pToken;
+    }
+  }
 }
 
 static int updateAndVerifyRestfulReqParameters(KvsApp_t *pKvs)
@@ -1301,6 +1310,8 @@ int KvsApp_boot_theia(KvsAppHandle handle)
   // TODO implement
   // check for stream existence
 
+//   pKvs->pToken-expiration = {0};
+
   
   return res;
 }
@@ -1315,8 +1326,17 @@ int KvsApp_open_theia(KvsAppHandle handle)
   // TODO implement
   // updateIotCredential(pKvs);
   // check (always true for now) for updated dataendpoint and setup PUT MEDIA
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
 
-  if (/* current time */ + /* time offset for error */ > /* next token expiration time */) {
+  bool shouldUpdateToken = true;
+  if (pKvs->pToken != NULL) {
+    int currentTokenTime = timeutil_timegm(&pKvs->pToken->expiration);
+    LOG_INF("current token time: %ld", currentTokenTime);
+    shouldUpdateToken = ts.tv_sec + TIME_OFFSET_FOR_ERROR_SEC > timeutil_timegm(&pKvs->pToken->expiration);
+  }
+
+  if (shouldUpdateToken) {
     updateIotCredential(pKvs);
     LOG_DBG("updateIotCredential done");
     if ((res = updateAndVerifyRestfulReqParameters(pKvs)) != KVS_ERRNO_NONE) {
@@ -1324,6 +1344,7 @@ int KvsApp_open_theia(KvsAppHandle handle)
       /* Propagate the res error */
     }
   }
+  
   if (true /* or convert to a condition causing updating of the data endpoint*/) {
     if ((res = setupDataEndpoint(pKvs)) != KVS_ERRNO_NONE) {
       LogError("Failed to setup data endpoint");
