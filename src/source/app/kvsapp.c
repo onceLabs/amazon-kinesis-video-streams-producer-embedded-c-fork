@@ -1323,9 +1323,6 @@ int KvsApp_open_theia(KvsAppHandle handle)
 
   KvsApp_t *pKvs = (KvsApp_t *)handle;
 
-  // TODO implement
-  // updateIotCredential(pKvs);
-  // check (always true for now) for updated dataendpoint and setup PUT MEDIA
   struct timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
 
@@ -1339,10 +1336,10 @@ int KvsApp_open_theia(KvsAppHandle handle)
   if (shouldUpdateToken) {
     updateIotCredential(pKvs);
     LOG_DBG("updateIotCredential done");
-    if ((res = updateAndVerifyRestfulReqParameters(pKvs)) != KVS_ERRNO_NONE) {
-      LogError("Failed to setup KVS");
-      /* Propagate the res error */
-    }
+  }
+  if ((res = updateAndVerifyRestfulReqParameters(pKvs)) != KVS_ERRNO_NONE) {
+    LogError("Failed to setup KVS");
+    /* Propagate the res error */
   }
   
   if (true /* or convert to a condition causing updating of the data endpoint*/) {
@@ -1356,7 +1353,7 @@ int KvsApp_open_theia(KvsAppHandle handle)
     } else if (uHttpStatusCode != 200) {
       res = KVS_GENERATE_RESTFUL_ERROR(uHttpStatusCode);
       LogError("PUT MEDIA http status code:%d\n", uHttpStatusCode);
-      return;
+      return -1;
     } else {
       LOG_INF("PUT MEDIA http status code:%d\n", uHttpStatusCode);
     }
@@ -1457,7 +1454,7 @@ int KvsApp_close_and_terminate(KvsAppHandle handle)
         LogError("Failed to lock");
       } else {
         Kvs_putMediaFinish(pKvs->xPutMediaHandle);
-        pKvs->xPutMediaHandle = NULL;
+        // pKvs->xPutMediaHandle = NULL;
         pKvs->isEbmlHeaderUpdated = false;
 
         if (pKvs->xStreamHandle != NULL) {

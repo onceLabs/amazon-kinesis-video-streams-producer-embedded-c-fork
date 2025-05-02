@@ -174,9 +174,9 @@ IotCredentialToken_t *Iot_getCredential(IotCredentialRequest_t *pReq)
     LogInfo("pCredentialHost: %s", pReq->pCredentialHost);
     LogInfo("pRoleAlias: %s", pReq->pRoleAlias);
     LogInfo("pThingName: %s", pReq->pThingName);
-    LogInfo("pRootCA: %s", pReq->pRootCA);
-    LogInfo("pCertificate: %s", pReq->pCertificate);
-    LogInfo("pPrivateKey: %s", pReq->pPrivateKey);
+    // LogInfo("pRootCA: %s", pReq->pRootCA);
+    // LogInfo("pCertificate: %s", pReq->pCertificate);
+    // LogInfo("pPrivateKey: %s", pReq->pPrivateKey);
 
     if (pReq == NULL || pReq->pCredentialHost == NULL || pReq->pRoleAlias == NULL || pReq->pThingName == NULL || pReq->pRootCA == NULL || pReq->pCertificate == NULL ||
         pReq->pPrivateKey == NULL)
