@@ -1361,7 +1361,6 @@ int KvsApp_close(KvsAppHandle handle)
     return res;
 }
 
-
 // Theia specific so that the app is never deallocated until wanted
 int KvsApp_close_and_terminate(KvsAppHandle handle)
 {
