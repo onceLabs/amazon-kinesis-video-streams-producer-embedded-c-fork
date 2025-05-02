@@ -1361,6 +1361,62 @@ int KvsApp_close(KvsAppHandle handle)
     return res;
 }
 
+
+// Theia specific so that the app is never deallocated until wanted
+int KvsApp_close_and_terminate(KvsAppHandle handle)
+{
+  int res = KVS_ERRNO_NONE;
+  DataFrameHandle xDataFrameHandle = NULL;
+  DataFrameIn_t *pDataFrameIn = NULL;
+
+  KvsApp_t *pKvs = (KvsApp_t *)handle;
+
+  if (pKvs == NULL) {
+    res = KVS_ERROR_INVALID_ARGUMENT;
+  } else {
+    if (pKvs->xPutMediaHandle != NULL) {
+      if (k_mutex_lock(pKvs->xLockMutex, K_FOREVER)) {
+        res = KVS_ERROR_LOCK_ERROR;
+        LogError("Failed to lock");
+      } else {
+        Kvs_putMediaFinish(pKvs->xPutMediaHandle);
+        pKvs->xPutMediaHandle = NULL;
+        pKvs->isEbmlHeaderUpdated = false;
+
+        if (pKvs->xStreamHandle != NULL) {
+            prvStreamFlush(pKvs);
+            Kvs_streamTermintate(pKvs->xStreamHandle);
+            pKvs->xStreamHandle = NULL;
+        }
+        if (pKvs->pDataEndpoint != NULL) {
+            k_free(pKvs->pDataEndpoint);
+            pKvs->pDataEndpoint = NULL;
+        }
+        if (pKvs->pAwsSessionToken != NULL) {
+            k_free(pKvs->pAwsSessionToken);
+            pKvs->pAwsSessionToken = NULL;
+        }
+        if (pKvs->pSps != NULL) {
+            k_free(pKvs->pSps);
+            pKvs->pSps = NULL;
+        }
+        if (pKvs->pPps != NULL) {
+            k_free(pKvs->pPps);
+            pKvs->pPps = NULL;
+        }
+
+        int err = k_mutex_unlock(pKvs->xLockMutex);
+        if (err) {
+          res = KVS_ERROR_LOCK_ERROR;
+          LOG_ERR("Failed to unlock mutex during close_and_terminate, err: %d", err);
+        }
+      }
+    }
+  }
+
+  return res;
+}
+
 int KvsApp_addFrame(KvsAppHandle handle, uint8_t *pData, size_t uDataLen, size_t uDataSize, uint64_t uTimestamp, TrackType_t xTrackType)
 {
     return KvsApp_addFrameWithCallbacks(handle, pData, uDataLen, uDataSize, uTimestamp, xTrackType, NULL);
