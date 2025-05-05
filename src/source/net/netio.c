@@ -200,7 +200,7 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
         }
     }
 
-    LOG_DBG("Init config done");
+    LOG_WRN("Init config done");
     return res;
 }
 

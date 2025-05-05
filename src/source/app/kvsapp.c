@@ -1329,7 +1329,7 @@ int KvsApp_open_theia(KvsAppHandle handle)
   bool shouldUpdateToken = true;
   if (pKvs->pToken != NULL) {
     int currentTokenTime = timeutil_timegm(&pKvs->pToken->expiration);
-    LOG_INF("current token time: %ld", currentTokenTime);
+    LOG_INF("current token time: %ld, current time: %ld", currentTokenTime, ts.tv_sec);
     shouldUpdateToken = ts.tv_sec + TIME_OFFSET_FOR_ERROR_SEC > timeutil_timegm(&pKvs->pToken->expiration);
   }
 
@@ -1453,7 +1453,7 @@ int KvsApp_close_and_terminate(KvsAppHandle handle)
         res = KVS_ERROR_LOCK_ERROR;
         LogError("Failed to lock");
       } else {
-        Kvs_putMediaFinish(pKvs->xPutMediaHandle);
+        Kvs_putMediaFinish_theia(pKvs->xPutMediaHandle);
         // pKvs->xPutMediaHandle = NULL;
         pKvs->isEbmlHeaderUpdated = false;
 
@@ -1462,14 +1462,14 @@ int KvsApp_close_and_terminate(KvsAppHandle handle)
             Kvs_streamTermintate(pKvs->xStreamHandle);
             pKvs->xStreamHandle = NULL;
         }
-        if (pKvs->pDataEndpoint != NULL) {
-            k_free(pKvs->pDataEndpoint);
-            pKvs->pDataEndpoint = NULL;
-        }
-        if (pKvs->pAwsSessionToken != NULL) {
-            k_free(pKvs->pAwsSessionToken);
-            pKvs->pAwsSessionToken = NULL;
-        }
+        // if (pKvs->pDataEndpoint != NULL) {
+        //     k_free(pKvs->pDataEndpoint);
+        //     pKvs->pDataEndpoint = NULL;
+        // }
+        // if (pKvs->pAwsSessionToken != NULL) {
+        //     k_free(pKvs->pAwsSessionToken);
+        //     pKvs->pAwsSessionToken = NULL;
+        // }
         if (pKvs->pSps != NULL) {
             k_free(pKvs->pSps);
             pKvs->pSps = NULL;

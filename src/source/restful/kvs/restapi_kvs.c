@@ -1421,6 +1421,23 @@ void Kvs_putMediaFinish(PutMediaHandle xPutMediaHandle)
     }
 }
 
+void Kvs_putMediaFinish_theia(PutMediaHandle xPutMediaHandle)
+{
+    PutMedia_t *pPutMedia = xPutMediaHandle;
+
+    if (pPutMedia != NULL)
+    {
+        prvFlushFragmentAck(pPutMedia);
+        //Lock_Deinit(pPutMedia->xLock);
+        if (pPutMedia->xNetIoHandle != NULL)
+        {
+            NetIo_disconnect(pPutMedia->xNetIoHandle);
+            // NetIo_terminate(pPutMedia->xNetIoHandle);
+        }
+        // kvsFree(pPutMedia);
+    }
+}
+
 int Kvs_putMediaUpdateRecvTimeout(PutMediaHandle xPutMediaHandle, unsigned int uRecvTimeoutMs)
 {
     int res = KVS_ERRNO_NONE;
