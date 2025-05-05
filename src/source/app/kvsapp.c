@@ -1462,6 +1462,7 @@ int KvsApp_close_and_terminate(KvsAppHandle handle)
             Kvs_streamTermintate(pKvs->xStreamHandle);
             pKvs->xStreamHandle = NULL;
         }
+        
         // if (pKvs->pDataEndpoint != NULL) {
         //     k_free(pKvs->pDataEndpoint);
         //     pKvs->pDataEndpoint = NULL;
@@ -1470,6 +1471,7 @@ int KvsApp_close_and_terminate(KvsAppHandle handle)
         //     k_free(pKvs->pAwsSessionToken);
         //     pKvs->pAwsSessionToken = NULL;
         // }
+        
         if (pKvs->pSps != NULL) {
             k_free(pKvs->pSps);
             pKvs->pSps = NULL;
