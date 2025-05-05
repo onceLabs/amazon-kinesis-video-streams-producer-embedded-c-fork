@@ -1126,13 +1126,13 @@ int Kvs_putMediaStart(KvsServiceParameter_t *pServPara, KvsPutMediaParameter_t *
     if ((res = prvValidateServiceParameter(pServPara)) != KVS_ERRNO_NONE ||
         (res = prvValidatePutMediaParameter(pPutMediaPara)) != KVS_ERRNO_NONE)
     {
-        LogError("Invalid argument");
+        LogError("Invalid argument - pServPara:%p, pPutMediaPara:%p", pServPara, pPutMediaPara);
         /* Propagate the res error */
     }
     else if (pPutMediaHandle == NULL)
     {
         res = KVS_ERROR_INVALID_ARGUMENT;
-        LogError("Invalid argument");
+        LogError("Invalid argument - pPutMediaHandle is NULL");
     }
     else if ((res = getTimeInIso8601(pcXAmzDate, sizeof(pcXAmzDate))) != KVS_ERRNO_NONE)
     {
@@ -1418,6 +1418,23 @@ void Kvs_putMediaFinish(PutMediaHandle xPutMediaHandle)
             NetIo_terminate(pPutMedia->xNetIoHandle);
         }
         kvsFree(pPutMedia);
+    }
+}
+
+void Kvs_putMediaFinish_theia(PutMediaHandle xPutMediaHandle)
+{
+    PutMedia_t *pPutMedia = xPutMediaHandle;
+
+    if (pPutMedia != NULL)
+    {
+        prvFlushFragmentAck(pPutMedia);
+        //Lock_Deinit(pPutMedia->xLock);
+        if (pPutMedia->xNetIoHandle != NULL)
+        {
+            NetIo_disconnect(pPutMedia->xNetIoHandle);
+            // NetIo_terminate(pPutMedia->xNetIoHandle);
+        }
+        // kvsFree(pPutMedia);
     }
 }
 
