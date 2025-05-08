@@ -166,6 +166,13 @@ int Kvs_putMediaDoWork(PutMediaHandle xPutMediaHandle);
 void Kvs_putMediaFinish(PutMediaHandle xPutMediaHandle);
 
 /**
+ * @brief Theia specific version of Kvs_putMediaFinish().
+ *
+ * @param[in] xPutMediaHandle The handle of PUT MEDIA
+ */
+void Kvs_putMediaFinish_theia(PutMediaHandle xPutMediaHandle);
+
+/**
  * @brief Update the value of receive timeout.
  *
  * Receive timeout has been set in service parameters and is applied during connection setup. It can be altered during streaming.

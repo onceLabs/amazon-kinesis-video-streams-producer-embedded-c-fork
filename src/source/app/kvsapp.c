@@ -15,6 +15,13 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+#include <sys/timespec.h>
+#include <zephyr/kernel.h>
+#include <errno.h>
+#include <zephyr/posix/posix_types.h>
+#include <zephyr/posix/signal.h>
+#include <zephyr/types.h>
 
 /* Third-party headers */
 #include "azure_c_shared_utility/crt_abstractions.h"
@@ -47,6 +54,8 @@ LOG_MODULE_REGISTER(kvsapp, LOG_LEVEL_DBG);
 #define DEFAULT_PUT_MEDIA_RECV_TIMEOUT_MS (1 * 1000)
 #define DEFAULT_PUT_MEDIA_SEND_TIMEOUT_MS (1 * 1000)
 #define DEFAULT_RING_BUFFER_MEM_LIMIT (1 * 1024 * 1024)
+
+#define TIME_OFFSET_FOR_ERROR_SEC (60 * 5) // 5 minutes
 
 struct k_mutex wrapper_mutex;
 
@@ -414,30 +423,30 @@ static bool isIotCertAvailable(KvsApp_t *pKvs)
 
 static void updateIotCredential(KvsApp_t *pKvs)
 {
-    IotCredentialToken_t *pToken = NULL;
-    IotCredentialRequest_t xIotCredentialReq = {
-        .pCredentialHost = pKvs->pIotCredentialHost,
-        .pRoleAlias = pKvs->pIotRoleAlias,
-        .pThingName = pKvs->pIotThingName,
-        .pRootCA = pKvs->pIotX509RootCa,
-        .pCertificate = pKvs->pIotX509Certificate,
-        .pPrivateKey = pKvs->pIotX509PrivateKey};
+  IotCredentialToken_t *pToken = NULL;
+  IotCredentialRequest_t xIotCredentialReq = {
+    .pCredentialHost = pKvs->pIotCredentialHost,
+    .pRoleAlias = pKvs->pIotRoleAlias,
+    .pThingName = pKvs->pIotThingName,
+    .pRootCA = pKvs->pIotX509RootCa,
+    .pCertificate = pKvs->pIotX509Certificate,
+    .pPrivateKey = pKvs->pIotX509PrivateKey};
 
-    if (isIotCertAvailable(pKvs))
+  if (isIotCertAvailable(pKvs))
+  {
+    LOG_DBG("Updating Iot credential"); 
+    Iot_credentialTerminate(pKvs->pToken);
+    pKvs->pToken = NULL;
+    LOG_DBG("Iot credential terminated");
+    if ((pToken = Iot_getCredential(&xIotCredentialReq)) == NULL)
     {
-        LOG_DBG("Updating Iot credential"); 
-        Iot_credentialTerminate(pKvs->pToken);
-        pKvs->pToken = NULL;
-        LOG_DBG("Iot credential terminated");
-        if ((pToken = Iot_getCredential(&xIotCredentialReq)) == NULL)
-        {
-            LogError("Failed to get Iot credential");
-        }
-        else
-        {
-            pKvs->pToken = pToken;
-        }
+      LogError("Failed to get Iot credential");
     }
+    else
+    {
+      pKvs->pToken = pToken;
+    }
+  }
 }
 
 static int updateAndVerifyRestfulReqParameters(KvsApp_t *pKvs)
@@ -1292,52 +1301,105 @@ int KvsApp_setoption(KvsAppHandle handle, const char *pcOptionName, const char *
     return res;
 }
 
+int KvsApp_boot_theia(KvsAppHandle handle)
+{
+  int res = KVS_ERRNO_NONE;
+
+  KvsApp_t *pKvs = (KvsApp_t *)handle;
+
+  // TODO implement
+  // check for stream existence
+
+//   pKvs->pToken-expiration = {0};
+
+  
+  return res;
+}
+
+int KvsApp_open_theia(KvsAppHandle handle)
+{
+  int res = KVS_ERRNO_NONE;
+  unsigned int uHttpStatusCode = 0;
+
+  KvsApp_t *pKvs = (KvsApp_t *)handle;
+
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+
+  bool shouldUpdateToken = true;
+  if (pKvs->pToken != NULL) {
+    int currentTokenTime = timeutil_timegm(&pKvs->pToken->expiration);
+    LOG_INF("current token time: %ld, current time: %ld", currentTokenTime, ts.tv_sec);
+    shouldUpdateToken = ts.tv_sec + TIME_OFFSET_FOR_ERROR_SEC > timeutil_timegm(&pKvs->pToken->expiration);
+  }
+
+  if (shouldUpdateToken) {
+    updateIotCredential(pKvs);
+    LOG_DBG("updateIotCredential done");
+  }
+  if ((res = updateAndVerifyRestfulReqParameters(pKvs)) != KVS_ERRNO_NONE) {
+    LogError("Failed to setup KVS");
+    /* Propagate the res error */
+  }
+  
+  if (true /* or convert to a condition causing updating of the data endpoint*/) {
+    if ((res = setupDataEndpoint(pKvs)) != KVS_ERRNO_NONE) {
+      LogError("Failed to setup data endpoint");
+      /* Propagate the res error */
+    } else if (
+      (res = Kvs_putMediaStart(&(pKvs->xServicePara), &(pKvs->xPutMediaPara), &uHttpStatusCode, &(pKvs->xPutMediaHandle))) != KVS_ERRNO_NONE) {
+      LogError("Failed to setup PUT MEDIA");
+      /* Propagate the res error */
+    } else if (uHttpStatusCode != 200) {
+      res = KVS_GENERATE_RESTFUL_ERROR(uHttpStatusCode);
+      LogError("PUT MEDIA http status code:%d\n", uHttpStatusCode);
+      return -1;
+    } else {
+      LOG_INF("PUT MEDIA http status code:%d\n", uHttpStatusCode);
+    }
+  }
+
+  if ((res = createStream(pKvs)) != KVS_ERRNO_NONE) {
+    LogError("Failed to setup KVS stream");
+    /* Propagate the res error */
+  }
+  
+  return res;
+}
+
 int KvsApp_open(KvsAppHandle handle)
 {
-    int res = KVS_ERRNO_NONE;
-    KvsApp_t *pKvs = (KvsApp_t *)handle;
-    unsigned int uHttpStatusCode = 0;
+  int res = KVS_ERRNO_NONE;
+  KvsApp_t *pKvs = (KvsApp_t *)handle;
+  unsigned int uHttpStatusCode = 0;
 
-    if (pKvs == NULL)
-    {
-        res = KVS_ERROR_INVALID_ARGUMENT;
+  if (pKvs == NULL) {
+    res = KVS_ERROR_INVALID_ARGUMENT;
+  } else {
+    updateIotCredential(pKvs);
+    LOG_DBG("updateIotCredential done");
+    if ((res = updateAndVerifyRestfulReqParameters(pKvs)) != KVS_ERRNO_NONE) {
+      LogError("Failed to setup KVS");
+      /* Propagate the res error */
+    } else if ((res = setupDataEndpoint(pKvs)) != KVS_ERRNO_NONE) {
+      LogError("Failed to setup data endpoint");
+      /* Propagate the res error */
+    } else if ((res = Kvs_putMediaStart(&(pKvs->xServicePara), &(pKvs->xPutMediaPara), &uHttpStatusCode, &(pKvs->xPutMediaHandle))) != KVS_ERRNO_NONE) {
+      LogError("Failed to setup PUT MEDIA");
+      /* Propagate the res error */
+    } else if (uHttpStatusCode != 200) {
+      res = KVS_GENERATE_RESTFUL_ERROR(uHttpStatusCode);
+      LogError("PUT MEDIA http status code:%d\n", uHttpStatusCode);
+    } else {
+      LOG_INF("PUT MEDIA http status code:%d\n", uHttpStatusCode);
+      if ((res = createStream(pKvs)) != KVS_ERRNO_NONE) {
+        LogError("Failed to setup KVS stream");
+        /* Propagate the res error */
+      }
     }
-    else
-    {
-        updateIotCredential(pKvs);
-        LOG_DBG("updateIotCredential done");
-        if ((res = updateAndVerifyRestfulReqParameters(pKvs)) != KVS_ERRNO_NONE)
-        {
-            LogError("Failed to setup KVS");
-            /* Propagate the res error */
-        }
-        else if ((res = setupDataEndpoint(pKvs)) != KVS_ERRNO_NONE)
-        {
-            LogError("Failed to setup data endpoint");
-            /* Propagate the res error */
-        }
-        else if ((res = Kvs_putMediaStart(&(pKvs->xServicePara), &(pKvs->xPutMediaPara), &uHttpStatusCode, &(pKvs->xPutMediaHandle))) != KVS_ERRNO_NONE)
-        {
-            LogError("Failed to setup PUT MEDIA");
-            /* Propagate the res error */
-        }
-        else if (uHttpStatusCode != 200)
-        {
-            res = KVS_GENERATE_RESTFUL_ERROR(uHttpStatusCode);
-            LogError("PUT MEDIA http status code:%d\n", uHttpStatusCode);
-        }
-        else
-        {
-            LOG_INF("PUT MEDIA http status code:%d\n", uHttpStatusCode);
-            if ((res = createStream(pKvs)) != KVS_ERRNO_NONE)
-            {
-                LogError("Failed to setup KVS stream");
-                /* Propagate the res error */
-            }
-        }
-    }
+  }
 
-    return res;
+  return res;
 }
 
 int KvsApp_close(KvsAppHandle handle)
@@ -1372,6 +1434,63 @@ int KvsApp_close(KvsAppHandle handle)
     }
 
     return res;
+}
+
+// Theia specific so that the app is never deallocated until wanted
+int KvsApp_close_and_terminate(KvsAppHandle handle)
+{
+  int res = KVS_ERRNO_NONE;
+  DataFrameHandle xDataFrameHandle = NULL;
+  DataFrameIn_t *pDataFrameIn = NULL;
+
+  KvsApp_t *pKvs = (KvsApp_t *)handle;
+
+  if (pKvs == NULL) {
+    res = KVS_ERROR_INVALID_ARGUMENT;
+  } else {
+    if (pKvs->xPutMediaHandle != NULL) {
+      if (k_mutex_lock(pKvs->xLockMutex, K_FOREVER)) {
+        res = KVS_ERROR_LOCK_ERROR;
+        LogError("Failed to lock");
+      } else {
+        Kvs_putMediaFinish_theia(pKvs->xPutMediaHandle);
+        // pKvs->xPutMediaHandle = NULL;
+        pKvs->isEbmlHeaderUpdated = false;
+
+        if (pKvs->xStreamHandle != NULL) {
+            prvStreamFlush(pKvs);
+            Kvs_streamTermintate(pKvs->xStreamHandle);
+            pKvs->xStreamHandle = NULL;
+        }
+        
+        // if (pKvs->pDataEndpoint != NULL) {
+        //     k_free(pKvs->pDataEndpoint);
+        //     pKvs->pDataEndpoint = NULL;
+        // }
+        // if (pKvs->pAwsSessionToken != NULL) {
+        //     k_free(pKvs->pAwsSessionToken);
+        //     pKvs->pAwsSessionToken = NULL;
+        // }
+        
+        if (pKvs->pSps != NULL) {
+            k_free(pKvs->pSps);
+            pKvs->pSps = NULL;
+        }
+        if (pKvs->pPps != NULL) {
+            k_free(pKvs->pPps);
+            pKvs->pPps = NULL;
+        }
+
+        int err = k_mutex_unlock(pKvs->xLockMutex);
+        if (err) {
+          res = KVS_ERROR_LOCK_ERROR;
+          LOG_ERR("Failed to unlock mutex during close_and_terminate, err: %d", err);
+        }
+      }
+    }
+  }
+
+  return res;
 }
 
 int KvsApp_addFrame(KvsAppHandle handle, uint8_t *pData, size_t uDataLen, size_t uDataSize, uint64_t uTimestamp, TrackType_t xTrackType)
@@ -1425,7 +1544,7 @@ int KvsApp_addFrameWithCallbacks(KvsAppHandle handle, uint8_t *pData, size_t uDa
         xDataFrameIn.uTimestampMs = uTimestamp;
         xDataFrameIn.xTrackType = xTrackType;
         xDataFrameIn.xClusterType = (xDataFrameIn.bIsKeyFrame) ? MKV_CLUSTER : MKV_SIMPLE_BLOCK;
-        LOG_INF("Adding frame with cluster type: %u", xDataFrameIn.xClusterType);
+        // LOG_INF("Adding frame with cluster type: %u", xDataFrameIn.xClusterType);
 
         memset(pUserData, 0, sizeof(DataFrameUserData_t));
         if (pCallbacks == NULL)

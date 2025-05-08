@@ -15,6 +15,7 @@
 
 #include <stddef.h>
 #include <string.h>
+#include <time.h>
 
 /* Thirdparty headers */
 #include "azure_c_shared_utility/httpheaders.h"
@@ -79,6 +80,7 @@ static int parseIoTCredential(const char *pcJsonSrc, size_t uJsonSrcLen, IotCred
       LogInfo("\r\naccessKeyId: %s %u\n", iot_credential_response.credentials.accessKeyId, strlen(iot_credential_response.credentials.accessKeyId));
       LogInfo("\r\nsecretAccessKey: %s %u\n", iot_credential_response.credentials.secretAccessKey, strlen(iot_credential_response.credentials.secretAccessKey));
       LogInfo("\r\nsessionToken: %s %u\n", iot_credential_response.credentials.sessionToken, strlen(iot_credential_response.credentials.sessionToken));
+      LogInfo("\r\nexpiration: %s %u\n", iot_credential_response.credentials.expiration, strlen(iot_credential_response.credentials.expiration));
 
       // Copy the parsed values to the token
       pToken->pAccessKeyId = k_malloc(strlen(iot_credential_response.credentials.accessKeyId) + 1);
@@ -96,6 +98,13 @@ static int parseIoTCredential(const char *pcJsonSrc, size_t uJsonSrcLen, IotCred
         return KVS_ERROR_OUT_OF_MEMORY;
       }
       strcpy(pToken->pSessionToken, iot_credential_response.credentials.sessionToken);
+
+      // expiration
+      char* ret = strptime(iot_credential_response.credentials.expiration, "%Y-%m-%dT%H:%M:%SZ", &pToken->expiration);
+      if (ret == NULL) {
+        LogError("Failed to parse expiration");
+        return KVS_ERROR_FAIL_TO_PARSE_JSON_OF_IOT_CREDENTIAL;
+      }
 
       return KVS_ERRNO_NONE;
     } else {
@@ -165,9 +174,9 @@ IotCredentialToken_t *Iot_getCredential(IotCredentialRequest_t *pReq)
     LogInfo("pCredentialHost: %s", pReq->pCredentialHost);
     LogInfo("pRoleAlias: %s", pReq->pRoleAlias);
     LogInfo("pThingName: %s", pReq->pThingName);
-    LogInfo("pRootCA: %s", pReq->pRootCA);
-    LogInfo("pCertificate: %s", pReq->pCertificate);
-    LogInfo("pPrivateKey: %s", pReq->pPrivateKey);
+    // LogInfo("pRootCA: %s", pReq->pRootCA);
+    // LogInfo("pCertificate: %s", pReq->pCertificate);
+    // LogInfo("pPrivateKey: %s", pReq->pPrivateKey);
 
     if (pReq == NULL || pReq->pCredentialHost == NULL || pReq->pRoleAlias == NULL || pReq->pThingName == NULL || pReq->pRootCA == NULL || pReq->pCertificate == NULL ||
         pReq->pPrivateKey == NULL)

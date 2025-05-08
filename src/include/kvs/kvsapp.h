@@ -132,12 +132,23 @@ int KvsApp_setoption(KvsAppHandle handle, const char *pcOptionName, const char *
 int KvsApp_open(KvsAppHandle handle);
 
 /**
+ * Theia specific version of KvsApp_open(). It includes validating if stream exist, getting PUT_MEDIA data endpoint, and setup PUT_MEDIA
+ * If the AWS session token is known and unexpired, it will skip the credential provider.
+ */
+int KvsApp_open_theia(KvsAppHandle handle);
+
+/**
  * Close KVS application. It includes closing connection, flush stream buffer and terminate it.
  *
  * @param[in] handle KVS application handle
  * @return 0 on success, non-zero value otherwise
  */
 int KvsApp_close(KvsAppHandle handle);
+
+/**
+ * Same as KvsApp_open() but with flushing the stream buffer from KvsApp_terminate().
+ */
+int KvsApp_close_and_terminate(KvsAppHandle handle);
 
 /**
  * Add a frame to KVS application. If the stream buffer is not allocated yet, then it'll try to parse decode information

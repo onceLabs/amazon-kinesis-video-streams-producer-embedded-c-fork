@@ -41,7 +41,7 @@
 #include <kvs/transport/sockets_zephyr.h>
 #include <zephyr_mbedtls_priv.h>
 
-LOG_MODULE_REGISTER(netio, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(netio, LOG_LEVEL_ERR);
 
 #define DEFAULT_CONNECTION_TIMEOUT_MS       (10 * 1000)
 
@@ -200,7 +200,7 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
         }
     }
 
-    LOG_DBG("Init config done");
+    LOG_WRN("Init config done");
     return res;
 }
 
