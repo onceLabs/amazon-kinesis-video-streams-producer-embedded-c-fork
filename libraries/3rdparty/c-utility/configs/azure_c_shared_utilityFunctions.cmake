@@ -28,7 +28,7 @@ endfunction()
 function(windows_unittests_add_dll whatIsBuilding)
     link_directories(${whatIsBuilding}_dll $ENV{VCInstallDir}UnitTest/lib)
 
-    add_library(${whatIsBuilding}_dll SHARED
+    add_library(${whatIsBuilding}_dll STATIC
         ${${whatIsBuilding}_cpp_files}
         ${${whatIsBuilding}_h_files}
         ${${whatIsBuilding}_c_files}
@@ -280,7 +280,7 @@ function(c_windows_unittests_add_dll whatIsBuilding folder)
     target_compile_definitions(${whatIsBuilding}_testsonly_lib PUBLIC -DCPP_UNITTEST)
     target_compile_options(${whatIsBuilding}_testsonly_lib PUBLIC /TP /EHsc)
 
-    add_library(${whatIsBuilding}_dll SHARED
+    add_library(${whatIsBuilding}_dll STATIC
         ${${whatIsBuilding}_cpp_files}
         ${${whatIsBuilding}_h_files}
         ${${whatIsBuilding}_c_files}

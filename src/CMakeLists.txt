@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2.0)
+cmake_minimum_required(VERSION 3.20.0)
 
 set(LIB_NAME "kvs-embedded-c")
 
