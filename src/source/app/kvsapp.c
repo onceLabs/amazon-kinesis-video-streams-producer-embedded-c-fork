@@ -1519,7 +1519,7 @@ int KvsApp_addFrameWithCallbacks(KvsAppHandle handle, uint8_t *pData, size_t uDa
         xTrackType == TRACK_VIDEO && NALU_isAnnexBFrame(pData, uDataLen) &&
         (res = NALU_convertAnnexBToAvccInPlace(pData, uDataLen, uDataSize, (uint32_t *)&uDataLen)) != KVS_ERRNO_NONE)
     {
-        LogError("Failed to convert Annex-B to Avcc in place");
+        LogError("Failed to convert Annex-B to Avcc in place - %d", res);
         /* Propagate the res error */
     }
     else if ((res = checkAndBuildStream(pKvs, pData, uDataLen, xTrackType)) != KVS_ERRNO_NONE)
