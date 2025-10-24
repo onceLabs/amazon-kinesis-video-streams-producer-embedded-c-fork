@@ -219,179 +219,318 @@ int NALU_getNaluFromAnnexBNalus(uint8_t *pAnnexBBuf, size_t uAnnexBLen, uint8_t 
 
 bool NALU_isAnnexBFrame(uint8_t *pAnnexbBuf, uint32_t uAnnexbBufLen)
 {
-    bool bRes = false;
-
-    if (pAnnexbBuf == NULL || uAnnexbBufLen < 3)
-    {
-        LogError("Invalid argument");
-    }
-    else
-    {
-        if (uAnnexbBufLen >=3 && pAnnexbBuf[0] == 0x00 && pAnnexbBuf[1] == 0x00 && pAnnexbBuf[2] == 0x01)
-        {
-            bRes = true;
-        }
-        else if (uAnnexbBufLen >= 4 && pAnnexbBuf[0] == 0x00 && pAnnexbBuf[1] == 0x00 && pAnnexbBuf[2] == 0x00 && pAnnexbBuf[3] == 0x01)
-        {
-            bRes = true;
-        }
+    if (pAnnexbBuf == NULL || uAnnexbBufLen < 4) {
+        LogError("Invalid argument to NALU_isAnnexBFrame");
+        return false;
     }
 
-    LOG_DBG("NALU is %s", bRes ? "Annex-B" : "not Annex-B");
-    return bRes;
+    /* Skip leading zeros (some encoders pad before start code) */
+    uint32_t i = 0;
+    while (i + 3 < uAnnexbBufLen && pAnnexbBuf[i] == 0x00) {
+        i++;
+    }
+
+    if (i + 2 < uAnnexbBufLen &&
+        pAnnexbBuf[i] == 0x00 &&
+        pAnnexbBuf[i + 1] == 0x00 &&
+        pAnnexbBuf[i + 2] == 0x01) {
+        return true;
+    }
+
+    if (i + 3 < uAnnexbBufLen &&
+        pAnnexbBuf[i] == 0x00 &&
+        pAnnexbBuf[i + 1] == 0x00 &&
+        pAnnexbBuf[i + 2] == 0x00 &&
+        pAnnexbBuf[i + 3] == 0x01) {
+        return true;
+    }
+
+    return false;
 }
 
-int NALU_convertAnnexBToAvccInPlace(uint8_t *pAnnexbBuf, uint32_t uAnnexbBufLen, uint32_t uAnnexbBufSize, uint32_t *pAvccLen)
+// bool NALU_isAnnexBFrame(uint8_t *pAnnexbBuf, uint32_t uAnnexbBufLen)
+// {
+//     bool bRes = false;
+
+//     if (pAnnexbBuf == NULL || uAnnexbBufLen < 3)
+//     {
+//         LogError("Invalid argument");
+//     }
+//     else
+//     {
+//         if (uAnnexbBufLen >=3 && pAnnexbBuf[0] == 0x00 && pAnnexbBuf[1] == 0x00 && pAnnexbBuf[2] == 0x01)
+//         {
+//             bRes = true;
+//         }
+//         else if (uAnnexbBufLen >= 4 && pAnnexbBuf[0] == 0x00 && pAnnexbBuf[1] == 0x00 && pAnnexbBuf[2] == 0x00 && pAnnexbBuf[3] == 0x01)
+//         {
+//             bRes = true;
+//         }
+//     }
+
+//     LOG_DBG("NALU is %s", bRes ? "Annex-B" : "not Annex-B");
+//     return bRes;
+// }
+
+int NALU_convertAnnexBToAvccInPlace(uint8_t *pAnnexbBuf, uint32_t uAnnexbBufLen,
+                                    uint32_t uAnnexbBufSize, uint32_t *pAvccLen)
 {
     int res = KVS_ERRNO_NONE;
     uint32_t i = 0;
-    Nal_t xNals[ MAX_NALU_COUNT_IN_A_FRAME ];
+    Nal_t xNals[MAX_NALU_COUNT_IN_A_FRAME];
     uint32_t uNalRbspCount = 0;
     uint32_t uAvccTotalLen = 0;
     uint32_t uAvccIdx = 0;
 
-    if (pAnnexbBuf == NULL || uAnnexbBufLen <= 4 || uAnnexbBufSize < uAnnexbBufLen || pAvccLen == NULL)
-    {
+    if (pAnnexbBuf == NULL || uAnnexbBufLen <= 4 || uAnnexbBufSize < uAnnexbBufLen || pAvccLen == NULL) {
         res = KVS_ERROR_INVALID_ARGUMENT;
-        LogError("Invalid argument - %s", pAnnexbBuf == NULL ? "pAnnexbBuf is null" : uAnnexbBufLen <= 4 ? "uAnnexbBufLen is too small" :
-                    uAnnexbBufSize < uAnnexbBufLen ? "buff size insufficient" : "pAvccLen is null");
-        if (uAnnexbBufSize < uAnnexbBufLen)
-        {
+        LogError("Invalid argument - %s",
+            pAnnexbBuf == NULL ? "pAnnexbBuf is null" :
+            uAnnexbBufLen <= 4 ? "uAnnexbBufLen is too small" :
+            uAnnexbBufSize < uAnnexbBufLen ? "buff size insufficient" :
+            "pAvccLen is null");
+
+        if (uAnnexbBufSize < uAnnexbBufLen) {
             LogError("%d < %d", uAnnexbBufSize, uAnnexbBufLen);
         }
+        return res;
     }
-    else if (!NALU_isAnnexBFrame(pAnnexbBuf, uAnnexbBufLen))
-    {
-        LogInfo("It's not a Annex-B frame, skip convert");
+
+    if (!NALU_isAnnexBFrame(pAnnexbBuf, uAnnexbBufLen)) {
+        LogInfo("It's not an Annex-B frame, skip convert");
+        *pAvccLen = uAnnexbBufLen;
+        return KVS_ERRNO_NONE;
     }
-    else
-    {
-        /* Go through all Annex-B buffer and record all RBSP begin and length first. */
-        while (i < uAnnexbBufLen - 4)
-        {
-            if (uNalRbspCount > MAX_NALU_COUNT_IN_A_FRAME)
-            {
+
+    /* Find all NAL start codes */
+    while (i + 3 < uAnnexbBufLen) {
+        if (uNalRbspCount >= MAX_NALU_COUNT_IN_A_FRAME) {
+            LogError("NAL RBSP count exceeds max count");
+            res = KVS_ERROR_EXCEED_MAX_NALU_COUNT_LIMIT;
+            break;
+        }
+
+        /* Check for start codes */
+        if (pAnnexbBuf[i] == 0x00 && pAnnexbBuf[i + 1] == 0x00) {
+            if (pAnnexbBuf[i + 2] == 0x01) {
+                /* 0x000001 */
+                if (uNalRbspCount > 0)
+                    xNals[uNalRbspCount - 1].uNalLen = i - xNals[uNalRbspCount - 1].uNalBeginIdx;
+
+                i += 3;
+                xNals[uNalRbspCount++].uNalBeginIdx = i;
+                continue;
+            } else if ((i + 3 < uAnnexbBufLen) &&
+                       pAnnexbBuf[i + 2] == 0x00 &&
+                       pAnnexbBuf[i + 3] == 0x01) {
+                /* 0x00000001 */
+                if (uNalRbspCount > 0)
+                    xNals[uNalRbspCount - 1].uNalLen = i - xNals[uNalRbspCount - 1].uNalBeginIdx;
+
+                i += 4;
+                xNals[uNalRbspCount++].uNalBeginIdx = i;
+                continue;
+            } else if ((i + 3 < uAnnexbBufLen) &&
+                       pAnnexbBuf[i + 2] == 0x00 &&
+                       pAnnexbBuf[i + 3] == 0x00) {
+                /* Possible trailing padding */
+                LOG_DBG("Trailing 0x00000000 detected, likely padding");
                 break;
             }
-
-            if (pAnnexbBuf[i] == 0x00)
-            {
-                if (pAnnexbBuf[i+1] == 0x00)
-                {
-                    if (pAnnexbBuf[i+2] == 0x00)
-                    {
-                        if (pAnnexbBuf[i+3] == 0x01)
-                        {
-                            /* 0x00000001 is start code of NAL. */
-                            if (uNalRbspCount > 0)
-                            {
-                                xNals[uNalRbspCount-1].uNalLen = i - xNals[uNalRbspCount-1].uNalBeginIdx;
-                            }
-
-                            i += 4;
-                            xNals[uNalRbspCount++].uNalBeginIdx = i;
-                        }
-                        else if (pAnnexbBuf[i + 3] == 0x00)
-                        {
-                            /* 0x00000000 is not allowed. */
-                            LogInfo("Invalid NALU format");
-                            res = KVS_ERROR_INVALID_NALU_FORMAT;
-                            break;
-                        }
-                        else
-                        {
-                            /* 0x000000XX is acceptable. */
-                            i += 4;
-                        }
-                    }
-                    else if (pAnnexbBuf[i+2] == 0x01)
-                    {
-                        /* 0x000001 is start code of NAL */
-                        if (uNalRbspCount > 0)
-                        {
-                            xNals[uNalRbspCount-1].uNalLen = i - xNals[uNalRbspCount-1].uNalBeginIdx;
-                        }
-
-                        i += 3;
-                        xNals[uNalRbspCount++].uNalBeginIdx = i;
-                    }
-                    else
-                    {
-                        /* 0x0000XX is acceptable. It includes EPB case and we reserve EPB byte. */
-                        i += 3;
-                    }
-                }
-                else
-                {
-                    /* 0x00XX is acceptable. */
-                    i += 2;
-                }
-            }
-            else
-            {
-                /* 0xXX is acceptable. */
-                i++;
-            }
         }
 
-        if (uNalRbspCount == 0)
-        {
-            res = KVS_ERROR_MISSING_NALU;
-            LogInfo("No NALU is found in Annex-B frame");
-        }
-        else if (uNalRbspCount > MAX_NALU_COUNT_IN_A_FRAME)
-        {
-            res = KVS_ERROR_EXCEED_MAX_NALU_COUNT_LIMIT;
-            LogError("NAL RBSP count exceeds max count");
-        }
-        else
-        {
-            /* Update the last BSPS. */
-            xNals[ uNalRbspCount - 1 ].uNalLen = uAnnexbBufLen - xNals[ uNalRbspCount - 1 ].uNalBeginIdx;
-
-            /* Calculate needed size if we convert it to Avcc format. */
-            uAvccTotalLen = 4 * uNalRbspCount;
-            for (i=0; i<uNalRbspCount; i++)
-            {
-                uAvccTotalLen += xNals[i].uNalLen;
-            }
-
-            if (uAvccTotalLen > uAnnexbBufSize)
-            {
-                /* We don't have enough space to convert Annex-B to Avcc in place. */
-                LogInfo("No available space to convert Annex-B inplace");
-                *pAvccLen = 0;
-                res = KVS_ERROR_NO_ENOUGH_SPACE_FOR_NALU_CONVERSION;
-            }
-            else
-            {
-               /* move RBSP from back to head */
-                i = uNalRbspCount - 1;
-                uAvccIdx = uAvccTotalLen;
-                do
-                {
-                    /* move RBSP */
-                    uAvccIdx -= xNals[i].uNalLen;
-                    memmove(pAnnexbBuf + uAvccIdx, pAnnexbBuf + xNals[i].uNalBeginIdx, xNals[i].uNalLen);
-
-                    /* fill length info */
-                    uAvccIdx -= 4;
-                    PUT_UNALIGNED_4_byte_BE(pAnnexbBuf + uAvccIdx, xNals[i].uNalLen);
-
-                    if (i == 0)
-                    {
-                        break;
-                    }
-                    i--;
-                } while (true);
-
-                *pAvccLen = uAvccTotalLen;
-            }
-        }
+        i++;
     }
 
-    return res;
+    if (uNalRbspCount == 0) {
+        res = KVS_ERROR_MISSING_NALU;
+        LogInfo("No NALU found in Annex-B frame");
+        *pAvccLen = 0;
+        return res;
+    }
+
+    /* Finalize the last NAL length */
+    xNals[uNalRbspCount - 1].uNalLen = uAnnexbBufLen - xNals[uNalRbspCount - 1].uNalBeginIdx;
+
+    /* Calculate total length needed for AVCC format */
+    uAvccTotalLen = 4 * uNalRbspCount;
+    for (i = 0; i < uNalRbspCount; i++) {
+        uAvccTotalLen += xNals[i].uNalLen;
+    }
+
+    if (uAvccTotalLen > uAnnexbBufSize) {
+        LogInfo("No available space to convert Annex-B inplace");
+        *pAvccLen = 0;
+        return KVS_ERROR_NO_ENOUGH_SPACE_FOR_NALU_CONVERSION;
+    }
+
+    /* Convert Annex-B -> AVCC in place, move from end to start */
+    uAvccIdx = uAvccTotalLen;
+    for (i = uNalRbspCount; i-- > 0; ) {
+        /* Move RBSP data */
+        uAvccIdx -= xNals[i].uNalLen;
+        memmove(pAnnexbBuf + uAvccIdx, pAnnexbBuf + xNals[i].uNalBeginIdx, xNals[i].uNalLen);
+
+        /* Write 4-byte big-endian length */
+        uAvccIdx -= 4;
+        PUT_UNALIGNED_4_byte_BE(pAnnexbBuf + uAvccIdx, xNals[i].uNalLen);
+    }
+
+    *pAvccLen = uAvccTotalLen;
+    return KVS_ERRNO_NONE;
 }
+
+// int NALU_convertAnnexBToAvccInPlace(uint8_t *pAnnexbBuf, uint32_t uAnnexbBufLen, uint32_t uAnnexbBufSize, uint32_t *pAvccLen)
+// {
+//     int res = KVS_ERRNO_NONE;
+//     uint32_t i = 0;
+//     Nal_t xNals[ MAX_NALU_COUNT_IN_A_FRAME ];
+//     uint32_t uNalRbspCount = 0;
+//     uint32_t uAvccTotalLen = 0;
+//     uint32_t uAvccIdx = 0;
+
+//     if (pAnnexbBuf == NULL || uAnnexbBufLen <= 4 || uAnnexbBufSize < uAnnexbBufLen || pAvccLen == NULL)
+//     {
+//         res = KVS_ERROR_INVALID_ARGUMENT;
+//         LogError("Invalid argument - %s", pAnnexbBuf == NULL ? "pAnnexbBuf is null" : uAnnexbBufLen <= 4 ? "uAnnexbBufLen is too small" :
+//                     uAnnexbBufSize < uAnnexbBufLen ? "buff size insufficient" : "pAvccLen is null");
+//         if (uAnnexbBufSize < uAnnexbBufLen)
+//         {
+//             LogError("%d < %d", uAnnexbBufSize, uAnnexbBufLen);
+//         }
+//     }
+//     else if (!NALU_isAnnexBFrame(pAnnexbBuf, uAnnexbBufLen))
+//     {
+//         LogInfo("It's not a Annex-B frame, skip convert");
+//     }
+//     else
+//     {
+//         /* Go through all Annex-B buffer and record all RBSP begin and length first. */
+//         while (i < uAnnexbBufLen - 4)
+//         {
+//             if (uNalRbspCount > MAX_NALU_COUNT_IN_A_FRAME)
+//             {
+//                 break;
+//             }
+
+//             if (pAnnexbBuf[i] == 0x00)
+//             {
+//                 if (pAnnexbBuf[i+1] == 0x00)
+//                 {
+//                     if (pAnnexbBuf[i+2] == 0x00)
+//                     {
+//                         if (pAnnexbBuf[i+3] == 0x01)
+//                         {
+//                             /* 0x00000001 is start code of NAL. */
+//                             if (uNalRbspCount > 0)
+//                             {
+//                                 xNals[uNalRbspCount-1].uNalLen = i - xNals[uNalRbspCount-1].uNalBeginIdx;
+//                             }
+
+//                             i += 4;
+//                             xNals[uNalRbspCount++].uNalBeginIdx = i;
+//                         }
+//                         else if (pAnnexbBuf[i + 3] == 0x00)
+//                         {
+//                             /* 0x00000000 is not allowed. */
+//                             LogInfo("Invalid NALU format");
+//                             res = KVS_ERROR_INVALID_NALU_FORMAT;
+//                             break;
+//                         }
+//                         else
+//                         {
+//                             /* 0x000000XX is acceptable. */
+//                             i += 4;
+//                         }
+//                     }
+//                     else if (pAnnexbBuf[i+2] == 0x01)
+//                     {
+//                         /* 0x000001 is start code of NAL */
+//                         if (uNalRbspCount > 0)
+//                         {
+//                             xNals[uNalRbspCount-1].uNalLen = i - xNals[uNalRbspCount-1].uNalBeginIdx;
+//                         }
+
+//                         i += 3;
+//                         xNals[uNalRbspCount++].uNalBeginIdx = i;
+//                     }
+//                     else
+//                     {
+//                         /* 0x0000XX is acceptable. It includes EPB case and we reserve EPB byte. */
+//                         i += 3;
+//                     }
+//                 }
+//                 else
+//                 {
+//                     /* 0x00XX is acceptable. */
+//                     i += 2;
+//                 }
+//             }
+//             else
+//             {
+//                 /* 0xXX is acceptable. */
+//                 i++;
+//             }
+//         }
+
+//         if (uNalRbspCount == 0)
+//         {
+//             res = KVS_ERROR_MISSING_NALU;
+//             LogInfo("No NALU is found in Annex-B frame");
+//         }
+//         else if (uNalRbspCount > MAX_NALU_COUNT_IN_A_FRAME)
+//         {
+//             res = KVS_ERROR_EXCEED_MAX_NALU_COUNT_LIMIT;
+//             LogError("NAL RBSP count exceeds max count");
+//         }
+//         else
+//         {
+//             /* Update the last BSPS. */
+//             xNals[ uNalRbspCount - 1 ].uNalLen = uAnnexbBufLen - xNals[ uNalRbspCount - 1 ].uNalBeginIdx;
+
+//             /* Calculate needed size if we convert it to Avcc format. */
+//             uAvccTotalLen = 4 * uNalRbspCount;
+//             for (i=0; i<uNalRbspCount; i++)
+//             {
+//                 uAvccTotalLen += xNals[i].uNalLen;
+//             }
+
+//             if (uAvccTotalLen > uAnnexbBufSize)
+//             {
+//                 /* We don't have enough space to convert Annex-B to Avcc in place. */
+//                 LogInfo("No available space to convert Annex-B inplace");
+//                 *pAvccLen = 0;
+//                 res = KVS_ERROR_NO_ENOUGH_SPACE_FOR_NALU_CONVERSION;
+//             }
+//             else
+//             {
+//                /* move RBSP from back to head */
+//                 i = uNalRbspCount - 1;
+//                 uAvccIdx = uAvccTotalLen;
+//                 do
+//                 {
+//                     /* move RBSP */
+//                     uAvccIdx -= xNals[i].uNalLen;
+//                     memmove(pAnnexbBuf + uAvccIdx, pAnnexbBuf + xNals[i].uNalBeginIdx, xNals[i].uNalLen);
+
+//                     /* fill length info */
+//                     uAvccIdx -= 4;
+//                     PUT_UNALIGNED_4_byte_BE(pAnnexbBuf + uAvccIdx, xNals[i].uNalLen);
+
+//                     if (i == 0)
+//                     {
+//                         break;
+//                     }
+//                     i--;
+//                 } while (true);
+
+//                 *pAvccLen = uAvccTotalLen;
+//             }
+//         }
+//     }
+
+//     return res;
+// }
 
 int NALU_getH264VideoResolutionFromSps(uint8_t *pSps, size_t uSpsLen, uint16_t *puWidth, uint16_t *puHeight)
 {
