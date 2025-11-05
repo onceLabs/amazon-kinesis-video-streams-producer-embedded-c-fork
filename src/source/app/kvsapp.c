@@ -116,6 +116,7 @@ static int defaultOnDataFrameTerminate(uint8_t *pData, size_t uDataLen, uint64_t
     if (pData != NULL)
     {
         /* NOTE: this frame is not allocated from KVS, so it should not be freed by k_free() */
+        LOG_DBG("defaultOnDataFrameTerminate called - freeing pData - %p", pData);
         k_free(pData);
     }
 
@@ -290,7 +291,7 @@ static int prvStreamFlushToNextCluster(KvsApp_t *pKvs)
             }
             else
             {   
-                LOG_INF("xCusterType is not MKV_CLUSTER, pop it");
+                LOG_INF("xClusterType is not MKV_CLUSTER, pop it");
                 xDataFrameHandle = Kvs_streamPop(xStreamHandle);
                 pDataFrameIn = (DataFrameIn_t *)xDataFrameHandle;
                 prvCallOnDataFrameTerminate(pDataFrameIn);
