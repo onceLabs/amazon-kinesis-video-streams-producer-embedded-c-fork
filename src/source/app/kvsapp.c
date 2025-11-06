@@ -791,6 +791,8 @@ static int prvPutMediaSendData(KvsApp_t *pKvs, int *pxSendCnt, bool bForceSend)
             pDataFrameIn = (DataFrameIn_t *)xDataFrameHandle;
             pKvs->uEarliestTimestamp = pDataFrameIn->uTimestampMs;
 
+            // LOG_INF("Sent frame: track type %d, timestamp %llu, data len %zu (header len %zu)", pDataFrameIn->xTrackType, pDataFrameIn->uTimestampMs, uDataLen, uMkvHeaderLen);
+
             xSendCnt++;
 
             if (pKvs->onMkvSentCallbackInfo.onMkvSentCallback != NULL)
