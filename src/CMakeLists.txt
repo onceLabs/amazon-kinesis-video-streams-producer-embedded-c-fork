@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20.0)
 
 set(LIB_NAME "kvs-embedded-c")
 
-find_package(MBedTLS)
+# find_package(MBedTLS)
 
 set(THEIA_NXP ON)
 

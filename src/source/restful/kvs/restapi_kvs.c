@@ -573,27 +573,28 @@ static void prvLogFragmentAck(FragmentAck_t *pFragmentAck)
     {
         if (pFragmentAck->eventType == eBuffering)
         {
-            LogInfo("Fragment buffering, timecode:%" PRIu64 "", pFragmentAck->uFragmentTimecode);
+            // LogInfo("Fragment buffering, timecode:%" PRIu64 "", pFragmentAck->uFragmentTimecode);
+            LOG_INF("Fragment buffering, timecode:%" PRIu64 "", pFragmentAck->uFragmentTimecode);
         }
         else if (pFragmentAck->eventType == eReceived)
         {
-            LogInfo("Fragment received, timecode:%" PRIu64 "", pFragmentAck->uFragmentTimecode);
+            LOG_INF("Fragment received, timecode:%" PRIu64 "", pFragmentAck->uFragmentTimecode);
         }
         else if (pFragmentAck->eventType == ePersisted)
         {
-            LogInfo("Fragment persisted, timecode:%" PRIu64 "", pFragmentAck->uFragmentTimecode);
+            LOG_INF("Fragment persisted, timecode:%" PRIu64 "", pFragmentAck->uFragmentTimecode);
         }
         else if (pFragmentAck->eventType == eError)
         {
-            LogError("PutMedia session error id:%d", pFragmentAck->uErrorId);
+            LOG_ERR("PutMedia session error id:%d", pFragmentAck->uErrorId);
         }
         else if (pFragmentAck->eventType == eIdle)
         {
-            LogInfo("PutMedia session Idle");
+            LOG_INF("PutMedia session Idle");
         }
         else
         {
-            LogInfo("Unknown Fragment Ack");
+            LOG_ERR("Unknown Fragment Ack");
         }
     }
 }
@@ -1266,6 +1267,7 @@ int Kvs_putMediaUpdate(PutMediaHandle xPutMediaHandle, uint8_t *pMkvHeader, size
         }
         else
         {
+            LOG_INF("Sending fragment: MKV header size=%zu, data size=%zu, total=%zu", uMkvHeaderLen,  uDataLen, uMkvHeaderLen + uDataLen);
             if ((res = NetIo_send(pPutMedia->xNetIoHandle, (const unsigned char *)pcChunkedHeader, (size_t)xChunkedHeaderLen)) != KVS_ERRNO_NONE ||
                 (res = NetIo_send(pPutMedia->xNetIoHandle, pMkvHeader, uMkvHeaderLen)) != KVS_ERRNO_NONE ||
                 (pData != NULL && uDataLen > 0 && (res = NetIo_send(pPutMedia->xNetIoHandle, pData, uDataLen)) != KVS_ERRNO_NONE) ||
@@ -1341,6 +1343,7 @@ int Kvs_putMediaDoWork(PutMediaHandle xPutMediaHandle)
     }
     else
     {
+        LOG_DBG("Checking for fragment ack - NetIo_isDataAvailable()...");
         if (NetIo_isDataAvailable(pPutMedia->xNetIoHandle))
         {
             if ((xBufRecv = BUFFER_create_with_size(DEFAULT_RECV_BUFSIZE)) == NULL)
@@ -1432,9 +1435,11 @@ void Kvs_putMediaFinish_theia(PutMediaHandle xPutMediaHandle)
         if (pPutMedia->xNetIoHandle != NULL)
         {
             NetIo_disconnect(pPutMedia->xNetIoHandle);
-            // NetIo_terminate(pPutMedia->xNetIoHandle);
+            LOG_DBG("Kvs_putMediaFinish_theia called - NetIo disconnected"); // it was commented out until 11/5/25
+            NetIo_terminate(pPutMedia->xNetIoHandle);
         }
-        // kvsFree(pPutMedia);
+        LOG_DBG("Kvs_putMediaFinish_theia called - put media handle freed");
+        kvsFree(pPutMedia);
     }
 }
 
