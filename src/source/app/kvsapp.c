@@ -278,7 +278,9 @@ static int prvStreamFlushToNextCluster(KvsApp_t *pKvs)
         {
             res = KVS_ERROR_STREAM_NO_AVAILABLE_DATA_FRAME;
             LOG_ERR("Kvs_streamPeek failed with error %d", res);
-            break;
+            // break;
+            k_sleep(K_MSEC(1));
+            continue;
         }
         else
         {
@@ -1521,6 +1523,7 @@ int KvsApp_addFrameWithCallbacks(KvsAppHandle handle, uint8_t *pData, size_t uDa
         (res = NALU_convertAnnexBToAvccInPlace(pData, uDataLen, uDataSize, (uint32_t *)&uDataLen)) != KVS_ERRNO_NONE)
     {
         LogError("Failed to convert Annex-B to Avcc in place - %d", res);
+        LOG_HEXDUMP_DBG(pData, uDataLen, "Frame data:"); // task/BNCC-458 h264 header debug TODO remove
         /* Propagate the res error */
     }
     else if ((res = checkAndBuildStream(pKvs, pData, uDataLen, xTrackType)) != KVS_ERRNO_NONE)
