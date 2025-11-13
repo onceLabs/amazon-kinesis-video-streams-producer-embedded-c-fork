@@ -41,7 +41,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_REGISTER(kvsapp, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(kvsapp, LOG_LEVEL_INF);
 
 /* Internal headers */
 #include "os/allocator.h"

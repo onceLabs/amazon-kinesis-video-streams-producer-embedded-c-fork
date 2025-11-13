@@ -43,7 +43,7 @@
 
 #include "kvs/zephyr_fixes.h"
 
-LOG_MODULE_REGISTER(restapi, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(restapi, LOG_LEVEL_INF);
 
 #ifndef SAFE_FREE
 #define SAFE_FREE(a) \
@@ -1267,7 +1267,7 @@ int Kvs_putMediaUpdate(PutMediaHandle xPutMediaHandle, uint8_t *pMkvHeader, size
         }
         else
         {
-            LOG_INF("Sending fragment: MKV header size=%zu, data size=%zu, total=%zu", uMkvHeaderLen,  uDataLen, uMkvHeaderLen + uDataLen);
+            LOG_DBG("Sending fragment: MKV header size=%zu, data size=%zu, total=%zu", uMkvHeaderLen,  uDataLen, uMkvHeaderLen + uDataLen);
             if ((res = NetIo_send(pPutMedia->xNetIoHandle, (const unsigned char *)pcChunkedHeader, (size_t)xChunkedHeaderLen)) != KVS_ERRNO_NONE ||
                 (res = NetIo_send(pPutMedia->xNetIoHandle, pMkvHeader, uMkvHeaderLen)) != KVS_ERRNO_NONE ||
                 (pData != NULL && uDataLen > 0 && (res = NetIo_send(pPutMedia->xNetIoHandle, pData, uDataLen)) != KVS_ERRNO_NONE) ||
