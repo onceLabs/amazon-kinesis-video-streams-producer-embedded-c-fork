@@ -1,5 +1,5 @@
 
 [submodule "libraries/amazon/amazon-kinesis-video-streams-media-interface"]
 	path = libraries/amazon/amazon-kinesis-video-streams-media-interface
-	url = https://github.com/onceLabs/amazon-kinesis-video-streams-media-interface.git
+	url = https://github.com/onceLabs/amazon-kinesis-video-streams-producer-embedded-c-fork.git
 	branch = patch/development
