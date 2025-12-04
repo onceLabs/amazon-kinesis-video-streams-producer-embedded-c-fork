@@ -17,8 +17,8 @@ set(CMAKE_C_FLAGS "-D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200112L ${CMAKE_C_FLAGS
 
 set(LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 if(${THEIA_NXP})
-    set(ZEPHYR_DIR ${LIB_DIR}/../../../../../zephyr)
-    set(ZEPHYR_MODUELS_DIR ${LIB_DIR}/../../../../../modules)
+    set(ZEPHYR_DIR ${LIB_DIR}/../../../../zephyr)
+    set(ZEPHYR_MODUELS_DIR ${LIB_DIR}/../../../../modules)
 elseif(${THEIA_NRF})
     set(ZEPHYR_DIR /opt/nordic/ncs/v2.7.0/zephyr)
     set(ZEPHYR_MODUELS_DIR /opt/nordic/ncs/v2.7.0/modules)
