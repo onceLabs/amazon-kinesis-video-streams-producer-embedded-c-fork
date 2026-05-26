@@ -115,13 +115,16 @@ static SocketStatus_t resolveHostName( const char * pHostName,
     hints.ai_protocol = IPPROTO_TCP;
 
     /* Perform a DNS lookup on the given host name. */
-    dnsStatus = zsock_getaddrinfo( pHostName, NULL, &hints, pListHead );
-
-    if( dnsStatus != 0 )
+    while (dnsStatus != 0)
     {
-        LOG_ERR("Failed to resolve DNS: Hostname=, ErrorCode.\n");
-        returnStatus = SOCKETS_DNS_FAILURE;
+        dnsStatus = zsock_getaddrinfo( pHostName, NULL, &hints, pListHead );
+        if( dnsStatus != 0 )
+        {
+            LOG_ERR("Failed to resolve DNS: Hostname=%s, ErrorCode=%d.\n", pHostName, dnsStatus);
+            returnStatus = SOCKETS_DNS_FAILURE;
+        }
     }
+    returnStatus = SOCKETS_SUCCESS;
 
     return returnStatus;
 }
