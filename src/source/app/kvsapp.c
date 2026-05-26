@@ -1331,6 +1331,14 @@ int KvsApp_open_theia(KvsAppHandle handle)
   struct timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
 
+  LOG_WRN("KVS IoT creds: host=%s alias=%s thing=%s ca=%s cert=%s key=%s",
+  pKvs->pIotCredentialHost ? "set" : "NULL",
+  pKvs->pIotRoleAlias      ? "set" : "NULL",
+  pKvs->pIotThingName      ? "set" : "NULL",
+  pKvs->pIotX509RootCa     ? "set" : "NULL",
+  pKvs->pIotX509Certificate? "set" : "NULL",
+  pKvs->pIotX509PrivateKey ? "set" : "NULL");
+
   bool shouldUpdateToken = true;
   if (pKvs->pToken != NULL) {
     int currentTokenTime = timeutil_timegm(&pKvs->pToken->expiration);
