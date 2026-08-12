@@ -16,6 +16,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <time.h>
+#include <zephyr/kernel.h>
 
 /* Thirdparty headers */
 #include "azure_c_shared_utility/httpheaders.h"

@@ -68,8 +68,6 @@ set(LIB_SRC
     ${LIB_DIR}/source/restful/kvs/restapi_kvs.c
     ${LIB_DIR}/source/stream/stream.c
     ${LIB_DIR}/source/transport/sockets_zephyr.c
-    ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include/mbedtls/ctr_drbg.h
-    ${ZEPHYR_MODUELS_DIR}/crypto/mbedtls/include/mbedtls/entropy.h
 )
 
 if (${THEIA_NRF})
