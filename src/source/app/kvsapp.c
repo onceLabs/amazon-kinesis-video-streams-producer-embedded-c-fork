@@ -20,7 +20,8 @@
 #include <zephyr/kernel.h>
 #include <errno.h>
 #include <zephyr/posix/posix_types.h>
-#include <zephyr/posix/signal.h>
+#include <signal.h>
+#include <zephyr/sys/timeutil.h>
 #include <zephyr/types.h>
 
 /* Third-party headers */
@@ -280,7 +281,7 @@ static int prvStreamFlushToNextCluster(KvsApp_t *pKvs)
             LOG_ERR("Kvs_streamPeek failed with error %d", res);
             // break;
             k_sleep(K_MSEC(1));
-            continue;
+            break;
         }
         else
         {
