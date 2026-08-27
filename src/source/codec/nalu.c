@@ -32,7 +32,14 @@
 
 LOG_MODULE_REGISTER(nalu, LOG_LEVEL_NONE);
 
-#define MAX_NALU_COUNT_IN_A_FRAME ( 16 )
+/* Real hardware measurement (task/BNCC-812, N6 camera, 1280x720 H.264):
+ * a legitimate complex/full-refresh frame was confirmed via diagnostic
+ * logging to genuinely contain 74 real NAL units, with no buffer overflow
+ * or other corruption involved (uTotalNaluSeen counts every detected NAL
+ * regardless of the array cap, independent of any splicing/corruption
+ * bug - see the usbh_uvc.c buffer-overflow fix in patches/zephyr). 128
+ * gives real margin above that measured figure for larger/busier frames. */
+#define MAX_NALU_COUNT_IN_A_FRAME ( 128 )
 
 typedef struct Nal
 {
@@ -249,6 +256,8 @@ int NALU_convertAnnexBToAvccInPlace(uint8_t *pAnnexbBuf, uint32_t uAnnexbBufLen,
     uint32_t uNalRbspCount = 0;
     uint32_t uAvccTotalLen = 0;
     uint32_t uAvccIdx = 0;
+    bool bExceedsMaxNaluCount = false;
+    uint32_t uTotalNaluSeen = 0;
 
     if (pAnnexbBuf == NULL || uAnnexbBufLen <= 4 || uAnnexbBufSize < uAnnexbBufLen || pAvccLen == NULL)
     {
@@ -269,11 +278,6 @@ int NALU_convertAnnexBToAvccInPlace(uint8_t *pAnnexbBuf, uint32_t uAnnexbBufLen,
         /* Go through all Annex-B buffer and record all RBSP begin and length first. */
         while (i < uAnnexbBufLen - 4)
         {
-            if (uNalRbspCount > MAX_NALU_COUNT_IN_A_FRAME)
-            {
-                break;
-            }
-
             if (pAnnexbBuf[i] == 0x00)
             {
                 if (pAnnexbBuf[i+1] == 0x00)
@@ -283,6 +287,26 @@ int NALU_convertAnnexBToAvccInPlace(uint8_t *pAnnexbBuf, uint32_t uAnnexbBufLen,
                         if (pAnnexbBuf[i+3] == 0x01)
                         {
                             /* 0x00000001 is start code of NAL. */
+                            uTotalNaluSeen++;
+                            if (uNalRbspCount >= MAX_NALU_COUNT_IN_A_FRAME)
+                            {
+                                /* xNals[] only has MAX_NALU_COUNT_IN_A_FRAME
+                                 * valid slots (0..MAX_NALU_COUNT_IN_A_FRAME-1) -
+                                 * stop writing into it here, before the next
+                                 * xNals[uNalRbspCount++] write, to avoid
+                                 * writing one element past the end of this
+                                 * stack array (a prior '>' check let
+                                 * uNalRbspCount reach MAX+1 before stopping,
+                                 * which wrote out of bounds on real hardware
+                                 * and corrupted the stack). Keep scanning
+                                 * (without writing) so uTotalNaluSeen reports
+                                 * the real count for diagnostics instead of
+                                 * silently capping at the array size. */
+                                bExceedsMaxNaluCount = true;
+                                i += 4;
+                            }
+                            else
+                            {
                             if (uNalRbspCount > 0)
                             {
                                 xNals[uNalRbspCount-1].uNalLen = i - xNals[uNalRbspCount-1].uNalBeginIdx;
@@ -290,6 +314,7 @@ int NALU_convertAnnexBToAvccInPlace(uint8_t *pAnnexbBuf, uint32_t uAnnexbBufLen,
 
                             i += 4;
                             xNals[uNalRbspCount++].uNalBeginIdx = i;
+                            }
                         }
                         else if (pAnnexbBuf[i + 3] == 0x00)
                         {
@@ -307,6 +332,14 @@ int NALU_convertAnnexBToAvccInPlace(uint8_t *pAnnexbBuf, uint32_t uAnnexbBufLen,
                     else if (pAnnexbBuf[i+2] == 0x01)
                     {
                         /* 0x000001 is start code of NAL */
+                        uTotalNaluSeen++;
+                        if (uNalRbspCount >= MAX_NALU_COUNT_IN_A_FRAME)
+                        {
+                            bExceedsMaxNaluCount = true;
+                            i += 3;
+                        }
+                        else
+                        {
                         if (uNalRbspCount > 0)
                         {
                             xNals[uNalRbspCount-1].uNalLen = i - xNals[uNalRbspCount-1].uNalBeginIdx;
@@ -314,6 +347,7 @@ int NALU_convertAnnexBToAvccInPlace(uint8_t *pAnnexbBuf, uint32_t uAnnexbBufLen,
 
                         i += 3;
                         xNals[uNalRbspCount++].uNalBeginIdx = i;
+                        }
                     }
                     else
                     {
@@ -339,10 +373,10 @@ int NALU_convertAnnexBToAvccInPlace(uint8_t *pAnnexbBuf, uint32_t uAnnexbBufLen,
             res = KVS_ERROR_MISSING_NALU;
             LogInfo("No NALU is found in Annex-B frame");
         }
-        else if (uNalRbspCount > MAX_NALU_COUNT_IN_A_FRAME)
+        else if (bExceedsMaxNaluCount)
         {
             res = KVS_ERROR_EXCEED_MAX_NALU_COUNT_LIMIT;
-            LogError("NAL RBSP count exceeds max count");
+            LogError("NAL RBSP count exceeds max count: saw %u, limit %u", uTotalNaluSeen, MAX_NALU_COUNT_IN_A_FRAME);
         }
         else
         {
