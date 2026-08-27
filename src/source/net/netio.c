@@ -195,15 +195,14 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
 
     if (res == KVS_ERRNO_NONE)
     {
-        while (1) {
-            if ((retVal = mbedtls_ssl_setup(&(pxNet->xSsl), &(pxNet->xConf))) != 0)
-            {
-                res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
-                LogError("Failed to setup ssl (err:-%X)", -res);
-                continue;
-            }
+        if ((retVal = mbedtls_ssl_setup(&(pxNet->xSsl), &(pxNet->xConf))) != 0)
+        {
+            res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
+            LogError("Failed to setup ssl (err:-%X)", -res);
+        }
+        else
+        {
             k_sleep(K_MSEC(100));
-            break;
         }
     }
 

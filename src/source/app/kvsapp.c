@@ -1534,7 +1534,6 @@ int KvsApp_addFrameWithCallbacks(KvsAppHandle handle, uint8_t *pData, size_t uDa
         (res = NALU_convertAnnexBToAvccInPlace(pData, uDataLen, uDataSize, (uint32_t *)&uDataLen)) != KVS_ERRNO_NONE)
     {
         LogError("Failed to convert Annex-B to Avcc in place - %d", res);
-        LOG_HEXDUMP_ERR(pData, uDataLen, "Frame data:"); // task/BNCC-458 h264 header debug TODO remove
         /* Propagate the res error */
     }
     else if ((res = checkAndBuildStream(pKvs, pData, uDataLen, xTrackType)) != KVS_ERRNO_NONE)
