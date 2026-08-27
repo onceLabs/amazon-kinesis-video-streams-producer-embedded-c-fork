@@ -22,11 +22,10 @@
 #include <zephyr/net/socket.h>
 /* Third party headers */
 #include "azure_c_shared_utility/xlogging.h"
-#include <mbedtls/ctr_drbg.h>
-#include <mbedtls/entropy.h>
-#include <mbedtls/psa_util.h>
+#include <psa/crypto.h>
 // #include <mbedtls/net.h>
 #include <mbedtls/net_sockets.h>
+#include <mbedtls/x509_crt.h>
 //#include <zephyr/posix/sys/select.h>
 #include <zephyr/net/net_context.h>
 #include <zephyr/net/net_ip.h>
@@ -51,8 +50,6 @@ typedef struct NetIo
     int tcpSocket;
     mbedtls_ssl_context xSsl;
     mbedtls_ssl_config xConf;
-    mbedtls_ctr_drbg_context xCtrDrbg;
-    mbedtls_entropy_context xEntropy;
 
     /* Variables for IoT credential provider. It's optional feature so we declare them as pointers. */
     mbedtls_x509_crt *pRootCA;
@@ -137,7 +134,9 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
         }
         else
         {
-            mbedtls_ssl_conf_rng(&(pxNet->xConf), mbedtls_ctr_drbg_random, &(pxNet->xCtrDrbg));
+            /* RNG is no longer app-configured in Mbed TLS 4.x - TLS uses the
+             * PSA Crypto random generator throughout (see psa_crypto_init()
+             * in NetIo_create()). */
             mbedtls_ssl_set_hostname(&(pxNet->xSsl), pcHost);
             mbedtls_ssl_conf_read_timeout(&(pxNet->xConf), pxNet->uRecvTimeoutMs);
             NetIo_setSendTimeout(pxNet, pxNet->uSendTimeoutMs);
@@ -166,7 +165,10 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
                 {
                     LOG_DBG("Successfully parsed device x509");
                 }
-                if ((retVal = mbedtls_pk_parse_key(pxNet->pPrivKey, (void *)pcPrivKey, strlen(pcPrivKey) + 1, NULL, 0, mbedtls_psa_get_random, MBEDTLS_PSA_RANDOM_STATE)) != 0)
+                /* Mbed TLS 4.x: mbedtls_pk_parse_key() no longer takes an
+                 * RNG callback - it uses the PSA Crypto random generator
+                 * internally (see psa_crypto_init() in NetIo_create()). */
+                if ((retVal = mbedtls_pk_parse_key(pxNet->pPrivKey, (void *)pcPrivKey, strlen(pcPrivKey) + 1, NULL, 0)) != 0)
                 {
                     res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
                     LOG_ERR("Failed to parse private x509 (err:-%02x)", -retVal);
@@ -193,15 +195,14 @@ static int prvInitConfig(NetIo_t *pxNet, const char *pcHost, const char *pcRootC
 
     if (res == KVS_ERRNO_NONE)
     {
-        while (1) {
-            if ((retVal = mbedtls_ssl_setup(&(pxNet->xSsl), &(pxNet->xConf))) != 0)
-            {
-                res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
-                LogError("Failed to setup ssl (err:-%X)", -res);
-                continue;
-            }
+        if ((retVal = mbedtls_ssl_setup(&(pxNet->xSsl), &(pxNet->xConf))) != 0)
+        {
+            res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
+            LogError("Failed to setup ssl (err:-%X)", -res);
+        }
+        else
+        {
             k_sleep(K_MSEC(100));
-            break;
         }
     }
 
@@ -285,15 +286,17 @@ NetIoHandle NetIo_create(void)
         memset(_pxNet, 0, sizeof(NetIo_t));
         mbedtls_ssl_init(&(_pxNet->xSsl));
         mbedtls_ssl_config_init(&(_pxNet->xConf));
-        mbedtls_ctr_drbg_init(&(_pxNet->xCtrDrbg));
-        mbedtls_entropy_init(&(_pxNet->xEntropy));
 #if defined(CONFIG_MBEDTLS_DEBUG_FUNC)
         mbedtls_ssl_conf_dbg(&(_pxNet->xConf), zephyr_mbedtls_debug, NULL);
 #endif
         _pxNet->uRecvTimeoutMs = DEFAULT_CONNECTION_TIMEOUT_MS;
         _pxNet->uSendTimeoutMs = DEFAULT_CONNECTION_TIMEOUT_MS;
 
-        if (mbedtls_ctr_drbg_seed(&(_pxNet->xCtrDrbg), mbedtls_entropy_func, &(_pxNet->xEntropy), NULL, 0) != 0)
+        /* Mbed TLS 4.x uses the PSA Crypto random generator throughout (no
+         * more app-managed entropy/DRBG contexts) - initialize it here
+         * before any crypto/TLS operation. Safe to call more than once
+         * across the app's lifetime. */
+        if (psa_crypto_init() != PSA_SUCCESS)
         {
             NetIo_terminate(_pxNet);
             _pxNet = NULL;
@@ -309,8 +312,6 @@ void NetIo_terminate(NetIoHandle xNetIoHandle)
 
     if (pxNet != NULL)
     {
-        mbedtls_ctr_drbg_free(&(pxNet->xCtrDrbg));
-        mbedtls_entropy_free(&(pxNet->xEntropy));
         mbedtls_ssl_free(&(pxNet->xSsl));
         mbedtls_ssl_config_free(&(pxNet->xConf));
 

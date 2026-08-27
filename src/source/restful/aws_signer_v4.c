@@ -360,7 +360,13 @@ int AwsSigV4_Sign(AwsSigV4Handle xSigV4Handle, char *pcAccessKey, char *pcSecret
     }
     LOG_DBG("HMAC size: %d", uHmacSize);
     mbedtls_md_init(&xMdCtx);
-    if ((retVal = mbedtls_md_setup(&xMdCtx, pxMdInfo, 1)) != 0) {
+    /* hmac must always be 0 here - Mbed TLS 4.x's mbedtls_md_setup()
+     * unconditionally rejects hmac != 0 (HMAC setup is now the separate
+     * mbedtls_md_hmac_setup() call). xMdCtx itself is never used for the
+     * actual HMAC steps below - those all go through the free-standing
+     * mbedtls_md_hmac() convenience function, which manages its own
+     * context - so this is just satisfying mbedtls_md_init/free pairing. */
+    if ((retVal = mbedtls_md_setup(&xMdCtx, pxMdInfo, 0)) != 0) {
         res = KVS_GENERATE_MBEDTLS_ERROR(retVal);
     }
 

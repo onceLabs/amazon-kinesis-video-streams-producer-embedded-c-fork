@@ -20,7 +20,8 @@
 #include <zephyr/kernel.h>
 #include <errno.h>
 #include <zephyr/posix/posix_types.h>
-#include <zephyr/posix/signal.h>
+#include <signal.h>
+#include <zephyr/sys/timeutil.h>
 #include <zephyr/types.h>
 
 /* Third-party headers */
@@ -280,7 +281,7 @@ static int prvStreamFlushToNextCluster(KvsApp_t *pKvs)
             LOG_ERR("Kvs_streamPeek failed with error %d", res);
             // break;
             k_sleep(K_MSEC(1));
-            continue;
+            break;
         }
         else
         {
@@ -1533,7 +1534,6 @@ int KvsApp_addFrameWithCallbacks(KvsAppHandle handle, uint8_t *pData, size_t uDa
         (res = NALU_convertAnnexBToAvccInPlace(pData, uDataLen, uDataSize, (uint32_t *)&uDataLen)) != KVS_ERRNO_NONE)
     {
         LogError("Failed to convert Annex-B to Avcc in place - %d", res);
-        LOG_HEXDUMP_ERR(pData, uDataLen, "Frame data:"); // task/BNCC-458 h264 header debug TODO remove
         /* Propagate the res error */
     }
     else if ((res = checkAndBuildStream(pKvs, pData, uDataLen, xTrackType)) != KVS_ERRNO_NONE)

@@ -32,10 +32,10 @@
 
 /* Zephyr includes. */
 #include <zephyr/net/socket.h>
-#include <zephyr/random/random.h>
 
 /* mbed TLS includes. */
 #include <mbedtls/error.h>
+#include <psa/crypto.h>
 
 /* TLS transport header. */
 #include "kvs/transport/mbedtls_zephyr.h"
@@ -58,32 +58,23 @@ struct NetworkContext
 /*-----------------------------------------------------------*/
 
 /**
- * @brief Represents string to be logged when mbedTLS returned error
- * does not contain a high-level code.
+ * @brief Convert an mbedTLS error code to a descriptive string.
+ *
+ * Mbed TLS 4.x removed mbedtls_high_level_strerr()/mbedtls_low_level_strerr()
+ * (the high/low-level error code split no longer exists) in favor of a
+ * single combined mbedtls_strerror() call.
  */
-static const char * pNoHighLevelMbedTlsCodeStr = "<No-High-Level-Code>";
+static const char * mbedtlsErrToStr( int mbedTlsCode )
+{
+    static char errStrBuf[ 128 ];
 
-/**
- * @brief Represents string to be logged when mbedTLS returned error
- * does not contain a low-level code.
- */
-static const char * pNoLowLevelMbedTlsCodeStr = "<No-Low-Level-Code>";
+    mbedtls_strerror( mbedTlsCode, errStrBuf, sizeof( errStrBuf ) );
 
-/**
- * @brief Utility for converting the high-level code in an mbedTLS error to string,
- * if the code-contains a high-level code; otherwise, using a default string.
- */
-#define mbedtlsHighLevelCodeOrDefault( mbedTlsCode )       \
-    ( mbedtls_high_level_strerr( mbedTlsCode ) != NULL ) ? \
-    mbedtls_high_level_strerr( mbedTlsCode ) : pNoHighLevelMbedTlsCodeStr
+    return errStrBuf;
+}
 
-/**
- * @brief Utility for converting the level-level code in an mbedTLS error to string,
- * if the code-contains a level-level code; otherwise, using a default string.
- */
-#define mbedtlsLowLevelCodeOrDefault( mbedTlsCode )       \
-    ( mbedtls_low_level_strerr( mbedTlsCode ) != NULL ) ? \
-    mbedtls_low_level_strerr( mbedTlsCode ) : pNoLowLevelMbedTlsCodeStr
+#define mbedtlsHighLevelCodeOrDefault( mbedTlsCode ) mbedtlsErrToStr( mbedTlsCode )
+#define mbedtlsLowLevelCodeOrDefault( mbedTlsCode )  ""
 
 /*-----------------------------------------------------------*/
 
@@ -118,22 +109,6 @@ static int mbedtls_platform_send( void * ctx,
 static int mbedtls_platform_recv( void * ctx,
                                   unsigned char * buf,
                                   size_t len );
-
-/**
- * @brief Function to generate a random number.
- *
- * @param[in] data Callback context.
- * @param[out] output The address of the buffer that receives the random number.
- * @param[in] len Maximum size of the random number to be generated.
- * @param[out] olen The size, in bytes, of the #output buffer.
- *
- * @return 0 if no critical failures occurred,
- * MBEDTLS_ERR_ENTROPY_SOURCE_FAILED otherwise.
- */
-static int mbedtls_platform_entropy_poll( void * data,
-                                          unsigned char * output,
-                                          size_t len,
-                                          size_t * olen );
 
 /**
  * @brief Initialize the mbed TLS structures in a network connection.
@@ -245,17 +220,6 @@ static TlsTransportStatus_t tlsSetup( NetworkContext_t * pNetworkContext,
 static TlsTransportStatus_t tlsHandshake( NetworkContext_t * pNetworkContext,
                                           const NetworkCredentials_t * pNetworkCredentials );
 
-/**
- * @brief Initialize mbedTLS.
- *
- * @param[out] entropyContext mbed TLS entropy context for generation of random numbers.
- * @param[out] ctrDrgbContext mbed TLS CTR DRBG context for generation of random numbers.
- *
- * @return #TLS_TRANSPORT_SUCCESS, or #TLS_TRANSPORT_INTERNAL_ERROR.
- */
-static TlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyContext,
-                                         mbedtls_ctr_drbg_context * pCtrDrgbContext );
-
 /*-----------------------------------------------------------*/
 
 static int mbedtls_platform_send( void * ctx,
@@ -280,40 +244,6 @@ static int mbedtls_platform_recv( void * ctx,
 }
 /*-----------------------------------------------------------*/
 
-static int mbedtls_platform_entropy_poll( void * data,
-                                          unsigned char * output,
-                                          size_t len,
-                                          size_t * olen )
-{
-    int status = 0;
-    int rngStatus = 0;
-
-    assert( output != NULL );
-    assert( olen != NULL );
-
-    /* Context is not used by this function. */
-    ( void ) data;
-
-    /* TLS requires a secure random number generator; thus, this function uses
-     * uses the RNG function provided by Zephyr.  */
-    rngStatus = sys_csrand_get( output, len );
-
-    if( rngStatus == 0 )
-    {
-        /* All random bytes generated. */
-        *olen = len;
-    }
-    else
-    {
-        /* RNG failure. */
-        *olen = 0;
-        status = MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
-    }
-
-    return status;
-}
-/*-----------------------------------------------------------*/
-
 static void sslContextInit( SSLContext_t * pSslContext )
 {
     assert( pSslContext != NULL );
@@ -334,8 +264,6 @@ static void sslContextFree( SSLContext_t * pSslContext )
     mbedtls_x509_crt_free( &( pSslContext->rootCa ) );
     mbedtls_x509_crt_free( &( pSslContext->clientCert ) );
     mbedtls_pk_free( &( pSslContext->privKey ) );
-    mbedtls_entropy_free( &( pSslContext->entropyContext ) );
-    mbedtls_ctr_drbg_free( &( pSslContext->ctrDrgbContext ) );
     mbedtls_ssl_config_free( &( pSslContext->config ) );
 }
 /*-----------------------------------------------------------*/
@@ -434,12 +362,11 @@ static int32_t setCredentials( SSLContext_t * pSslContext,
     /* Set up the certificate security profile, starting from the default value. */
     pSslContext->certProfile = mbedtls_x509_crt_profile_default;
 
-    /* Set SSL authmode and the RNG context. */
+    /* Set SSL authmode. RNG is no longer app-configured in Mbed TLS 4.x -
+     * TLS uses the PSA Crypto random generator throughout (see
+     * psa_crypto_init() in MbedTLS_Connect()). */
     mbedtls_ssl_conf_authmode( &( pSslContext->config ),
                                MBEDTLS_SSL_VERIFY_REQUIRED );
-    mbedtls_ssl_conf_rng( &( pSslContext->config ),
-                          mbedtls_ctr_drbg_random,
-                          &( pSslContext->ctrDrgbContext ) );
     mbedtls_ssl_conf_cert_profile( &( pSslContext->config ),
                                    &( pSslContext->certProfile ) );
 
@@ -652,58 +579,6 @@ static TlsTransportStatus_t tlsHandshake( NetworkContext_t * pNetworkContext,
 }
 /*-----------------------------------------------------------*/
 
-static TlsTransportStatus_t initMbedtls( mbedtls_entropy_context * pEntropyContext,
-                                         mbedtls_ctr_drbg_context * pCtrDrgbContext )
-{
-    TlsTransportStatus_t returnStatus = TLS_TRANSPORT_SUCCESS;
-    int32_t mbedtlsError = 0;
-
-    /* Initialize contexts for random number generation. */
-    mbedtls_entropy_init( pEntropyContext );
-    mbedtls_ctr_drbg_init( pCtrDrgbContext );
-
-    /* Add a strong entropy source. At least one is required. */
-    mbedtlsError = mbedtls_entropy_add_source( pEntropyContext,
-                                               mbedtls_platform_entropy_poll,
-                                               NULL,
-                                               32,
-                                               MBEDTLS_ENTROPY_SOURCE_STRONG );
-
-    if( mbedtlsError != 0 )
-    {
-        LogError( ( "Failed to add entropy source: mbedTLSError= %s : %s.",
-                    mbedtlsHighLevelCodeOrDefault( mbedtlsError ),
-                    mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
-        returnStatus = TLS_TRANSPORT_INTERNAL_ERROR;
-    }
-
-    if( returnStatus == TLS_TRANSPORT_SUCCESS )
-    {
-        /* Seed the random number generator. */
-        mbedtlsError = mbedtls_ctr_drbg_seed( pCtrDrgbContext,
-                                              mbedtls_entropy_func,
-                                              pEntropyContext,
-                                              NULL,
-                                              0 );
-
-        if( mbedtlsError != 0 )
-        {
-            LogError( ( "Failed to seed PRNG: mbedTLSError= %s : %s.",
-                        mbedtlsHighLevelCodeOrDefault( mbedtlsError ),
-                        mbedtlsLowLevelCodeOrDefault( mbedtlsError ) ) );
-            returnStatus = TLS_TRANSPORT_INTERNAL_ERROR;
-        }
-    }
-
-    if( returnStatus == TLS_TRANSPORT_SUCCESS )
-    {
-        LogDebug( ( "Successfully initialized mbedTLS." ) );
-    }
-
-    return returnStatus;
-}
-/*-----------------------------------------------------------*/
-
 TlsTransportStatus_t MbedTLS_Connect( NetworkContext_t * pNetworkContext,
                                       const ServerInfo_t * pServerInfo,
                                       const NetworkCredentials_t * pNetworkCredentials,
@@ -752,11 +627,17 @@ TlsTransportStatus_t MbedTLS_Connect( NetworkContext_t * pNetworkContext,
         }
     }
 
-    /* Initialize mbedtls. */
+    /* Initialize the PSA Crypto subsystem. Mbed TLS 4.x uses the PSA
+     * Crypto random generator throughout (no more app-managed entropy/DRBG
+     * contexts), so this must run before any TLS/crypto operation. Safe to
+     * call more than once across the app's lifetime. */
     if( returnStatus == TLS_TRANSPORT_SUCCESS )
     {
-        returnStatus = initMbedtls( &( pTlsTransportParams->sslContext.entropyContext ),
-                                    &( pTlsTransportParams->sslContext.ctrDrgbContext ) );
+        if( psa_crypto_init() != PSA_SUCCESS )
+        {
+            LogError( ( "Failed to initialize PSA Crypto." ) );
+            returnStatus = TLS_TRANSPORT_INTERNAL_ERROR;
+        }
     }
 
     /* Initialize TLS contexts and set credentials. */
