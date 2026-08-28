@@ -437,7 +437,7 @@ static void updateIotCredential(KvsApp_t *pKvs)
 
   if (isIotCertAvailable(pKvs))
   {
-    LOG_DBG("Updating Iot credential"); 
+    LOG_DBG("Updating Iot credential");
     Iot_credentialTerminate(pKvs->pToken);
     pKvs->pToken = NULL;
     LOG_DBG("Iot credential terminated");
@@ -1354,8 +1354,13 @@ int KvsApp_open_theia(KvsAppHandle handle)
     LogError("Failed to setup KVS");
     /* Propagate the res error */
   }
-  
-  if (true /* or convert to a condition causing updating of the data endpoint*/) {
+
+  /* Guarded on the check above: setupDataEndpoint() can trivially "succeed"
+   * (e.g. pcPutMediaEndpoint already cached from an earlier attempt) even
+   * when updateAndVerifyRestfulReqParameters() just failed - letting it run
+   * anyway silently overwrites res and hides the real root cause (e.g. an
+   * expired/failed AWS IoT credential fetch from updateIotCredential()). */
+  if (res == KVS_ERRNO_NONE) {
     if ((res = setupDataEndpoint(pKvs)) != KVS_ERRNO_NONE) {
       LogError("Failed to setup data endpoint");
       /* Propagate the res error */
@@ -1372,11 +1377,17 @@ int KvsApp_open_theia(KvsAppHandle handle)
     }
   }
 
-  if ((res = createStream(pKvs)) != KVS_ERRNO_NONE) {
+  /* Guarded on the earlier chain's result: unconditionally calling
+   * createStream() here let its own success silently overwrite res and mask
+   * a real failure from setupDataEndpoint()/Kvs_putMediaStart() above -
+   * confirmed live: KvsApp_open_theia() was returning success with
+   * xPutMediaHandle still NULL, causing KvsApp_doWork() to fail later with
+   * KVS_ERROR_INVALID_ARGUMENT. */
+  if (res == KVS_ERRNO_NONE && (res = createStream(pKvs)) != KVS_ERRNO_NONE) {
     LogError("Failed to setup KVS stream");
     /* Propagate the res error */
   }
-  
+
   return res;
 }
 
